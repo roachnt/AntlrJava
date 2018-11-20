@@ -26,6 +26,7 @@ public class Driver {
 
     walker.walk(converter, tree);
 
+    System.out.println(converter.currentVariableSubscriptMap);
     // System.out.println(tree.toStringTree(parser)); // print LISP-style tree
   }
 }
