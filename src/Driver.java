@@ -18,15 +18,17 @@ public class Driver {
     // create a parser that feeds off the tokens buffer
     Java8Parser parser = new Java8Parser(tokens);
 
+    TokenStreamRewriter rewriter = new TokenStreamRewriter(tokens);
+
     ParseTree tree = parser.compilationUnit(); // begin parsing at init rule
 
     ParseTreeWalker walker = new ParseTreeWalker(); // Standard walker
 
-    Converter converter = new Converter(parser);
+    Converter converter = new Converter(parser, rewriter);
 
     walker.walk(converter, tree);
 
-    System.out.println(converter.currentVariableSubscriptMap);
+    System.out.println(rewriter.getText());
     // System.out.println(tree.toStringTree(parser)); // print LISP-style tree
   }
 }

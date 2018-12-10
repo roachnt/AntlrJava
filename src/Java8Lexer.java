@@ -582,7 +582,7 @@ public class Java8Lexer extends Lexer {
 		"\u02d0\u02d7\u02db\u02df\u02e5\u02e8\u02ef\u02f3\u02fb\u02fe\u0305\u0309"+
 		"\u030d\u0312\u0315\u0318\u031d\u0320\u0325\u032a\u0332\u033d\u0341\u0346"+
 		"\u034a\u035a\u0364\u036a\u0371\u0375\u037b\u0388\u0390\u0413\u041c\u0424"+
-		"\u042f\u0439\u0447\3\b\2\2";
+		"\u042f\u0439\u0447\3\2\3\2";
 	public static final ATN _ATN =
 		new ATNDeserializer().deserialize(_serializedATN.toCharArray());
 	static {

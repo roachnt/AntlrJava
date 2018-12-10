@@ -1118,7 +1118,7 @@ fragment StringCharacter: ~["\\\r\n] | EscapeSequence;
 fragment EscapeSequence:
 	'\\' [btnfr"'\\]
 	| OctalEscape
-	| UnicodeEscape ; // This is not in the spec but prevents having to preprocess the input
+	| UnicodeEscape; // This is not in the spec but prevents having to preprocess the input
 
 fragment OctalEscape:
 	'\\' OctalDigit
@@ -1211,6 +1211,20 @@ fragment JavaLetterOrDigit:
 // Additional symbols not defined in the lexical specification
 // 
 //
+// 
+//
+// 
+//
+// 
+//
+// 
+//
+// 
+//
+// 
+//
+// 
+//
 
 AT: '@';
 ELLIPSIS: '...';
@@ -1219,9 +1233,23 @@ ELLIPSIS: '...';
 // Whitespace and comments
 // 
 //
+// 
+//
+// 
+//
+// 
+//
+// 
+//
+// 
+//
+// 
+//
+// 
+//
 
-WS: [ \t\r\n\u000C]+ -> skip;
+WS: [ \t\r\n\u000C]+ -> channel(HIDDEN);
 
-COMMENT: '/*' .*? '*/' -> skip;
+COMMENT: '/*' .*? '*/' -> channel(HIDDEN);
 
-LINE_COMMENT: '//' ~[\r\n]* -> skip;
+LINE_COMMENT: '//' ~[\r\n]* -> channel(HIDDEN);
