@@ -3,12 +3,18 @@ import java.util.ArrayList;
 
 import org.antlr.v4.runtime.TokenStream;
 import org.antlr.v4.runtime.TokenStreamRewriter;
+
 import org.antlr.v4.runtime.ParserRuleContext;
 
 public class Converter extends Java8BaseListener {
   Java8Parser parser;
+
+  // Rewriting mechanism
   TokenStreamRewriter rewriter;
+
+  // Tokens from the program
   TokenStream tokens;
+
   // Map from SSA-form variable to an array of the variables in its assignment
   HashMap<String, ArrayList<String>> variableConfoundersMap = new HashMap<>();
 
@@ -26,30 +32,53 @@ public class Converter extends Java8BaseListener {
 
   // Handling basic assignment statements
   @Override
-  public void enterAssignment(Java8Parser.AssignmentContext ctx) {
-    String variable = tokens.getText(ctx.leftHandSide());
+  public void enterLeftHandSide(Java8Parser.LeftHandSideContext ctx) {
+    String variable = tokens.getText(ctx);
+    int subscript = 0;
 
-    int subscript;
-    if (currentVariableSubscriptMap.containsKey(variable)) {
-      int currentSubscript = currentVariableSubscriptMap.get(variable);
-      subscript = currentSubscript + 1;
-    } else {
-      subscript = 0;
-    }
-    currentVariableSubscriptMap.put(variable, subscript);
-    rewriter.replace(ctx.leftHandSide().getStart(), variableTypeMap.get(variable) + " " + variable + "_" + subscript);
+    if (currentVariableSubscriptMap.containsKey(variable))
+      subscript = currentVariableSubscriptMap.get(variable) + 1;
+
+    rewriter.replace(ctx.getStart(), variableTypeMap.get(variable) + " " + variable + "_" + subscript);
   }
 
+  // Handling initializing variables in a method
+  @Override
+  public void enterLocalVariableDeclaration(Java8Parser.LocalVariableDeclarationContext ctx) {
+    String type = tokens.getText(ctx.unannType());
+    System.out.println(type);
+    for (int i = 0; i < ctx.variableDeclaratorList().variableDeclarator().size(); i++) {
+      int subscript = 0;
+      Java8Parser.VariableDeclaratorIdContext varContext = ctx.variableDeclaratorList().variableDeclarator(0)
+          .variableDeclaratorId();
+      String variable = tokens.getText(varContext);
+      rewriter.replace(varContext.getStart(), variable + "_" + subscript);
+      currentVariableSubscriptMap.put(variable, 0);
+      variableTypeMap.put(variable, type);
+    }
+  }
+
+  // When entering any expression, change the variable to SSA form
   @Override
   public void enterExpressionName(Java8Parser.ExpressionNameContext ctx) {
     String varName = tokens.getText(ctx);
-    int subscript = currentVariableSubscriptMap.get(varName) - 1;
-    System.out.println(isDescendantOf(ctx, Java8Parser.AssignmentContext.class));
-    if (!isDescendantOf(ctx, Java8Parser.LeftHandSideContext.class)
-        && isDescendantOf(ctx, Java8Parser.AssignmentContext.class))
+    int subscript = currentVariableSubscriptMap.get(varName);
+    if (!isDescendantOf(ctx, Java8Parser.LeftHandSideContext.class))
       rewriter.replace(ctx.getStart(), varName + "_" + subscript);
   }
 
+  // Upon exiting an assignment, increment the subscript counter
+  @Override
+  public void exitAssignment(Java8Parser.AssignmentContext ctx) {
+    String variable = tokens.getText(ctx.leftHandSide());
+    int subscript = 0;
+
+    if (currentVariableSubscriptMap.containsKey(variable))
+      subscript = currentVariableSubscriptMap.get(variable) + 1;
+    currentVariableSubscriptMap.put(variable, subscript);
+  }
+
+  // Get the parameters from the method and add them to the maps
   @Override
   public void enterFormalParameter(Java8Parser.FormalParameterContext ctx) {
     String varName = tokens.getText(ctx.variableDeclaratorId());
@@ -58,6 +87,7 @@ public class Converter extends Java8BaseListener {
     currentVariableSubscriptMap.put(varName, 0);
   }
 
+  // When entering the method, add the SSA form of the parameters to the body of the method
   @Override
   public void enterMethodBody(Java8Parser.MethodBodyContext ctx) {
     String initializeFormalParams = "";
@@ -69,17 +99,8 @@ public class Converter extends Java8BaseListener {
     rewriter.insertAfter(ctx.getStart(), initializeFormalParams);
   }
 
-  public ArrayList getAllAncestors(ParserRuleContext ctx) {
-    ArrayList<Object> ancestors = new ArrayList<>();
-    while (ctx.getParent() != null) {
-      ancestors.add(ctx.getParent().getClass());
-      ctx = ctx.getParent();
-    }
-    return ancestors;
-  }
-
+  // Checks whether a given context is the descendant of another given context
   public boolean isDescendantOf(ParserRuleContext ctx, Class cls) {
-    // TODO: Figure out how to type check ancestor context against ancestor input var
     while (ctx.getParent() != null) {
       if (cls.isInstance(ctx.getParent()))
         return true;

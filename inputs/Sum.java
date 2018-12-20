@@ -1,6 +1,6 @@
 public class Sum {
   public int sum(int a, int b) {
-    int c = 0;
+    int c = a;
     a = a * 2;
     b = b - 1;
 
