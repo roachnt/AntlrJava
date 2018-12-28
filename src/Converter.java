@@ -46,7 +46,6 @@ public class Converter extends Java8BaseListener {
   @Override
   public void enterLocalVariableDeclaration(Java8Parser.LocalVariableDeclarationContext ctx) {
     String type = tokens.getText(ctx.unannType());
-    System.out.println(type);
     for (int i = 0; i < ctx.variableDeclaratorList().variableDeclarator().size(); i++) {
       int subscript = 0;
       Java8Parser.VariableDeclaratorIdContext varContext = ctx.variableDeclaratorList().variableDeclarator(0)
@@ -97,6 +96,18 @@ public class Converter extends Java8BaseListener {
           + entry.getKey() + ";";
     }
     rewriter.insertAfter(ctx.getStart(), initializeFormalParams);
+  }
+
+  // Replace ++ with intitializaton of a new variable
+  @Override
+  public void exitPostIncrementExpression(Java8Parser.PostIncrementExpressionContext ctx) {
+    String varName = tokens.getText(ctx.postfixExpression().expressionName());
+    String varType = variableTypeMap.get(varName);
+    int subscript = currentVariableSubscriptMap.get(varName);
+    rewriter.replace(ctx.getStart(), varType + " " + varName + "_" + (subscript + 1));
+    rewriter.replace(ctx.getStop(), " = " + varName + "_" + subscript + " + 1");
+    currentVariableSubscriptMap.put(varName, subscript + 1);
+
   }
 
   // Checks whether a given context is the descendant of another given context
