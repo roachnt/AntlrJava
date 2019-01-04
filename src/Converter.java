@@ -3,7 +3,6 @@ import java.util.ArrayList;
 
 import org.antlr.v4.runtime.TokenStream;
 import org.antlr.v4.runtime.TokenStreamRewriter;
-
 import org.antlr.v4.runtime.ParserRuleContext;
 
 public class Converter extends Java8BaseListener {
@@ -39,7 +38,7 @@ public class Converter extends Java8BaseListener {
     if (currentVariableSubscriptMap.containsKey(variable))
       subscript = currentVariableSubscriptMap.get(variable) + 1;
 
-    rewriter.replace(ctx.getStart(), variableTypeMap.get(variable) + " " + variable + "_" + subscript);
+    rewriter.replace(ctx.getStart(), variable + "_" + subscript);
   }
 
   // Handling initializing variables in a method
@@ -51,7 +50,8 @@ public class Converter extends Java8BaseListener {
       Java8Parser.VariableDeclaratorIdContext varContext = ctx.variableDeclaratorList().variableDeclarator(0)
           .variableDeclaratorId();
       String variable = tokens.getText(varContext);
-      rewriter.replace(varContext.getStart(), variable + "_" + subscript);
+      rewriter.replace(varContext.getStart(), "");
+      rewriter.replace(ctx.getStart(), variable + "_" + subscript);
       currentVariableSubscriptMap.put(variable, 0);
       variableTypeMap.put(variable, type);
     }
@@ -86,14 +86,30 @@ public class Converter extends Java8BaseListener {
     currentVariableSubscriptMap.put(varName, 0);
   }
 
-  // When entering the method, add the SSA form of the parameters to the body of the method
+  // When entering the method, create the SSA form of the parameters to the body of the method
+  // They will be inserted once the parser exits the method body
+  String initializeFormalParams = "";
+
   @Override
   public void enterMethodBody(Java8Parser.MethodBodyContext ctx) {
-    String initializeFormalParams = "";
     for (HashMap.Entry<String, String> entry : variableTypeMap.entrySet()) {
       int subscript = currentVariableSubscriptMap.get(entry.getKey());
-      initializeFormalParams += "\n    " + entry.getValue() + " " + entry.getKey() + "_" + subscript + " = "
-          + entry.getKey() + ";";
+      initializeFormalParams += "\n    " + entry.getKey() + "_" + subscript + " = " + entry.getKey() + ";";
+    }
+  }
+
+  @Override
+  public void exitMethodBody(Java8Parser.MethodBodyContext ctx) {
+    rewriter.insertAfter(ctx.getStart(), "\n");
+    for (HashMap.Entry<String, Integer> entry : currentVariableSubscriptMap.entrySet()) {
+      rewriter.insertAfter(ctx.getStart(), "    ");
+      String variableName = entry.getKey();
+      int currentSubscript = entry.getValue();
+      String type = variableTypeMap.get(variableName);
+      for (int i = 0; i <= currentSubscript; i++) {
+        rewriter.insertAfter(ctx.getStart(), type + " " + variableName + "_" + i + ";");
+      }
+      rewriter.insertAfter(ctx.getStart(), "\n");
     }
     rewriter.insertAfter(ctx.getStart(), initializeFormalParams);
   }
@@ -102,9 +118,8 @@ public class Converter extends Java8BaseListener {
   @Override
   public void exitPostIncrementExpression(Java8Parser.PostIncrementExpressionContext ctx) {
     String varName = tokens.getText(ctx.postfixExpression().expressionName());
-    String varType = variableTypeMap.get(varName);
     int subscript = currentVariableSubscriptMap.get(varName);
-    rewriter.replace(ctx.getStart(), varType + " " + varName + "_" + (subscript + 1));
+    rewriter.replace(ctx.getStart(), varName + "_" + (subscript + 1));
     rewriter.replace(ctx.getStop(), " = " + varName + "_" + subscript + " + 1");
     currentVariableSubscriptMap.put(varName, subscript + 1);
 

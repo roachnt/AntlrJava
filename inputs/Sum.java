@@ -7,6 +7,9 @@ public class Sum {
     a = 9;
     b = 2;
     a++;
+    for (int i = 0; i < 10; i++) {
+      System.out.println("Hello");
+    }
     return a + b;
   }
 }

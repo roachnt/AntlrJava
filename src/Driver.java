@@ -1,5 +1,7 @@
 import java.io.FileInputStream;
 import java.io.IOException;
+import java.io.FileWriter;
+import java.io.BufferedWriter;
 
 import org.antlr.v4.runtime.*;
 import org.antlr.v4.runtime.tree.*;
@@ -28,6 +30,9 @@ public class Driver {
 
     walker.walk(converter, tree);
 
+    // BufferedWriter writer = new BufferedWriter(new FileWriter("out.java"));
+    // writer.write(rewriter.getText());
+    // writer.close();
     System.out.println(rewriter.getText());
     // System.out.println(tree.toStringTree(parser)); // print LISP-style tree
   }
