@@ -51,6 +51,7 @@ public class Converter extends Java8BaseListener {
           .variableDeclaratorId();
       String variable = tokens.getText(varContext);
       rewriter.replace(varContext.getStart(), "");
+      rewriter.replace(varContext.getStop(), "");
       rewriter.replace(ctx.getStart(), variable + "_" + subscript);
       currentVariableSubscriptMap.put(variable, 0);
       variableTypeMap.put(variable, type);
