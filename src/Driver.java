@@ -33,6 +33,10 @@ public class Driver {
     // BufferedWriter writer = new BufferedWriter(new FileWriter("out.java"));
     // writer.write(rewriter.getText());
     // writer.close();
+    // for (int i = 0; i < parser.getVocabulary().getMaxTokenType(); i++) {
+    //   System.out.println(
+    //       i + " = " + parser.getVocabulary().getDisplayName(i) + ", " + parser.getVocabulary().getLiteralName(i));
+    // }
     System.out.println(rewriter.getText());
     // System.out.println(tree.toStringTree(parser)); // print LISP-style tree
   }

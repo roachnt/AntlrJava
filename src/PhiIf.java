@@ -1,11 +1,15 @@
-public class PhiIf {
+public class PhiIf<T> {
   boolean predicate;
 
   public PhiIf(boolean predicate) {
     this.predicate = predicate;
   }
 
-  public boolean evaluatePredicate() {
+  public boolean getPredVal() {
     return predicate;
+  }
+
+  public T merge(T truePredicateValue, T originalValue) {
+    return predicate ? truePredicateValue : originalValue;
   }
 }

@@ -2,10 +2,16 @@ import java.util.HashMap;
 import java.util.ArrayList;
 
 import org.antlr.v4.runtime.TokenStream;
+import org.antlr.v4.runtime.CommonTokenStream;
 import org.antlr.v4.runtime.TokenStreamRewriter;
+import org.antlr.v4.runtime.tree.TerminalNode;
+
 import org.antlr.v4.runtime.ParserRuleContext;
 
 public class Converter extends Java8BaseListener {
+
+  final int IDENTIFIER_TYPE = 102;
+
   Java8Parser parser;
 
   // Rewriting mechanism
@@ -13,6 +19,12 @@ public class Converter extends Java8BaseListener {
 
   // Tokens from the program
   TokenStream tokens;
+
+  // Counter for Phi functions
+  int phiCounter = 0;
+
+  // Variables in predicate block
+  ArrayList<String> predicateBlockVariables = new ArrayList<>();
 
   // Map from SSA-form variable to an array of the variables in its assignment
   HashMap<String, ArrayList<String>> variableConfoundersMap = new HashMap<>();
@@ -38,6 +50,8 @@ public class Converter extends Java8BaseListener {
     if (currentVariableSubscriptMap.containsKey(variable))
       subscript = currentVariableSubscriptMap.get(variable) + 1;
 
+    if (isDescendantOf(ctx, Java8Parser.IfThenStatementContext.class))
+      predicateBlockVariables.add(variable);
     rewriter.replace(ctx.getStart(), variable + "_" + subscript);
   }
 
@@ -65,6 +79,8 @@ public class Converter extends Java8BaseListener {
     int subscript = currentVariableSubscriptMap.get(varName);
     if (!isDescendantOf(ctx, Java8Parser.LeftHandSideContext.class))
       rewriter.replace(ctx.getStart(), varName + "_" + subscript);
+    // if (isDescendantOf(ctx, Java8Parser.IfThenStatementContext.class))
+    // System.out.println("Rewrote predicate.");
   }
 
   // Upon exiting an assignment, increment the subscript counter
@@ -108,7 +124,7 @@ public class Converter extends Java8BaseListener {
       int currentSubscript = entry.getValue();
       String type = variableTypeMap.get(variableName);
       for (int i = 0; i <= currentSubscript; i++) {
-        rewriter.insertAfter(ctx.getStart(), type + " " + variableName + "_" + i + ";");
+        rewriter.insertAfter(ctx.getStart(), type + " " + variableName + "_" + i + " = null;");
       }
       rewriter.insertAfter(ctx.getStart(), "\n");
     }
@@ -124,6 +140,55 @@ public class Converter extends Java8BaseListener {
     rewriter.replace(ctx.getStop(), " = " + varName + "_" + subscript + " + 1");
     currentVariableSubscriptMap.put(varName, subscript + 1);
 
+  }
+
+  @Override
+  public void exitIfThenStatement(Java8Parser.IfThenStatementContext ctx) {
+    String type = "Integer";
+    String predicate = "";
+    ParserRuleContext exprCtx = ctx.expression();
+
+    // Get the SSA Form predicate to insert into Phi function
+    ArrayList<TerminalNode> ctxTokens = getAllTokensFromContext(ctx.expression());
+    for (TerminalNode token : ctxTokens) {
+      String tokenText = token.getText();
+      int tokenType = token.getSymbol().getType();
+      if (tokenType == IDENTIFIER_TYPE) {
+        int subscript = currentVariableSubscriptMap.get(tokenText);
+        String ssaFormVariable = tokenText + "_" + subscript;
+        predicate += ssaFormVariable;
+      } else
+        predicate += tokenText;
+      predicate += " ";
+    }
+
+    // TODO: Type checking and changes for different data types
+    String phiObject = "PhiIf<" + type + "> phi" + phiCounter + " = new PhiIf(" + predicate + ");";
+    rewriter.insertBefore(ctx.getStart(), "\n    " + phiObject + "\n    ");
+    phiCounter++;
+
+    // TODO: Create phi.merge() calls for each assignment after the if statement
+    rewriter.insertAfter(ctx.getStop(), "\n    ");
+    for (String var : predicateBlockVariables) {
+      int subscript = currentVariableSubscriptMap.get(var);
+      rewriter.insertAfter(ctx.getStop(), var + "_" + (subscript + 1) + ";\n");
+      currentVariableSubscriptMap.put(var, subscript + 1);
+    }
+    predicateBlockVariables.clear();
+  }
+
+  // Get all tokens in a given context
+  public ArrayList<TerminalNode> getAllTokensFromContext(ParserRuleContext ctx) {
+    ArrayList<TerminalNode> terminalNodes = new ArrayList<>();
+
+    int numChildren = ctx.getChildCount();
+    for (int i = 0; i < numChildren; i++)
+      if (ctx.getChild(i) instanceof TerminalNode)
+        terminalNodes.add((TerminalNode) ctx.getChild(i));
+      else if (ctx.getChild(i) instanceof ParserRuleContext)
+        terminalNodes.addAll(getAllTokensFromContext((ParserRuleContext) ctx.getChild(i)));
+
+    return terminalNodes;
   }
 
   // Checks whether a given context is the descendant of another given context

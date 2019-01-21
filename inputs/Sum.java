@@ -7,9 +7,13 @@ public class Sum {
     a = 9;
     b = 2;
     a++;
+    if (b < 5) {
+      a = 4;
+    }
     for (int i = 0; i < 10; i++) {
       System.out.println("Hello");
     }
+    b = b + 8;
     return a + b;
   }
 }
