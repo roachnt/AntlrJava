@@ -1,5 +1,7 @@
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.ArrayList;
+import java.util.Stack;
 
 import org.antlr.v4.runtime.TokenStream;
 import org.antlr.v4.runtime.CommonTokenStream;
@@ -14,6 +16,15 @@ public class Converter extends Java8BaseListener {
 
   Java8Parser parser;
 
+  HashMap<String, String> dataTypeToObjectMap = new HashMap<String, String>() {
+    {
+      put("int", "Integer");
+      put("double", "Double");
+      put("boolean", "Boolean");
+      put("float", "Float");
+    }
+  };
+
   // Rewriting mechanism
   TokenStreamRewriter rewriter;
 
@@ -23,8 +34,11 @@ public class Converter extends Java8BaseListener {
   // Counter for Phi functions
   int phiCounter = 0;
 
-  // Variables in predicate block
-  ArrayList<String> predicateBlockVariables = new ArrayList<>();
+  // Variables in predicate block being assigned
+  Stack<HashSet<String>> predicateBlockVariablesStack = new Stack<>();
+
+  // Variable subscripts before entering the predicate block
+  Stack<HashMap<String, Integer>> varSubscriptsBeforePredicateStack = new Stack<>();
 
   // Map from SSA-form variable to an array of the variables in its assignment
   HashMap<String, ArrayList<String>> variableConfoundersMap = new HashMap<>();
@@ -50,8 +64,9 @@ public class Converter extends Java8BaseListener {
     if (currentVariableSubscriptMap.containsKey(variable))
       subscript = currentVariableSubscriptMap.get(variable) + 1;
 
-    if (isDescendantOf(ctx, Java8Parser.IfThenStatementContext.class))
-      predicateBlockVariables.add(variable);
+    if (isDescendantOf(ctx, Java8Parser.IfThenStatementContext.class)
+        || isDescendantOf(ctx, Java8Parser.WhileStatementContext.class))
+      predicateBlockVariablesStack.lastElement().add(variable);
     rewriter.replace(ctx.getStart(), variable + "_" + subscript);
   }
 
@@ -79,8 +94,6 @@ public class Converter extends Java8BaseListener {
     int subscript = currentVariableSubscriptMap.get(varName);
     if (!isDescendantOf(ctx, Java8Parser.LeftHandSideContext.class))
       rewriter.replace(ctx.getStart(), varName + "_" + subscript);
-    // if (isDescendantOf(ctx, Java8Parser.IfThenStatementContext.class))
-    // System.out.println("Rewrote predicate.");
   }
 
   // Upon exiting an assignment, increment the subscript counter
@@ -124,7 +137,8 @@ public class Converter extends Java8BaseListener {
       int currentSubscript = entry.getValue();
       String type = variableTypeMap.get(variableName);
       for (int i = 0; i <= currentSubscript; i++) {
-        rewriter.insertAfter(ctx.getStart(), type + " " + variableName + "_" + i + " = null;");
+        String object = dataTypeToObjectMap.get(type);
+        rewriter.insertAfter(ctx.getStart(), object + " " + variableName + "_" + i + " = null;");
       }
       rewriter.insertAfter(ctx.getStart(), "\n");
     }
@@ -143,13 +157,94 @@ public class Converter extends Java8BaseListener {
   }
 
   @Override
+  public void enterIfThenStatement(Java8Parser.IfThenStatementContext ctx) {
+    updateVariableSubscriptPredicateStack();
+    predicateBlockVariablesStack.push(new HashSet<String>());
+  }
+
+  @Override
   public void exitIfThenStatement(Java8Parser.IfThenStatementContext ctx) {
+    HashMap<String, Integer> varSubscriptsBeforePredicate = varSubscriptsBeforePredicateStack.pop();
     String type = "Integer";
-    String predicate = "";
     ParserRuleContext exprCtx = ctx.expression();
 
     // Get the SSA Form predicate to insert into Phi function
-    ArrayList<TerminalNode> ctxTokens = getAllTokensFromContext(ctx.expression());
+    String predicate = extractSSAFormPredicate(ctx.expression(), varSubscriptsBeforePredicate);
+
+    // TODO: Type checking and changes for different data types
+    String phiObject = "PhiIf<" + type + "> phi" + phiCounter + " = new PhiIf(" + predicate + ");";
+    rewriter.insertBefore(ctx.getStart(), "\n    " + phiObject + "\n    ");
+
+    rewriter.insertAfter(ctx.getStop(), "\n");
+    for (String var : predicateBlockVariablesStack.lastElement()) {
+      rewriter.insertAfter(ctx.getStop(), "    ");
+      int subscript = currentVariableSubscriptMap.get(var);
+      int prePredicateSubscript = varSubscriptsBeforePredicate.get(var);
+
+      String beforePredicateVariable = var + "_" + prePredicateSubscript;
+      String predicateVariable = var + "_" + subscript;
+      rewriter.insertAfter(ctx.getStop(), var + "_" + (subscript + 1) + " = phi" + phiCounter + ".merge("
+          + predicateVariable + "," + beforePredicateVariable + ");\n");
+      currentVariableSubscriptMap.put(var, subscript + 1);
+    }
+    rewriter.replace(exprCtx.getStart(), exprCtx.getStop(), "phi" + phiCounter + ".getPredVal()");
+    phiCounter++;
+    predicateBlockVariablesStack.pop();
+  }
+
+  @Override
+  public void enterWhileStatement(Java8Parser.WhileStatementContext ctx) {
+    updateVariableSubscriptPredicateStack();
+    predicateBlockVariablesStack.push(new HashSet<String>());
+  }
+
+  @Override
+  public void exitWhileStatement(Java8Parser.WhileStatementContext ctx) {
+    HashMap<String, Integer> varSubscriptsBeforePredicate = varSubscriptsBeforePredicateStack.pop();
+    String type = "Integer";
+    ParserRuleContext exprCtx = ctx.expression();
+
+    // Get the SSA Form predicate to insert into Phi function
+    String predicate = extractSSAFormPredicate(ctx.expression(), varSubscriptsBeforePredicate);
+    String phiObject = "PhiIf<" + type + "> phi" + phiCounter + " = new PhiWhile(" + predicate + ");";
+    rewriter.insertBefore(ctx.getStart(), "\n    " + phiObject + "\n    ");
+
+    rewriter.replace(exprCtx.getStart(), exprCtx.getStop(), "phi" + phiCounter + ".getPredVal()");
+
+    String updatePredicate = extractSSAFormUpdatePredicate(ctx.expression());
+    rewriter.insertBefore(ctx.getStop(), "  phi" + phiCounter + ".evalPred(" + updatePredicate + ");\n    ");
+    // TODO: phi.entry()
+    // TODO: phi.exit()
+
+  }
+
+  public String extractSSAFormPredicate(ParserRuleContext expressionContext,
+      HashMap<String, Integer> varSubscriptsBeforePredicate) {
+    String predicate = "";
+
+    // Get the SSA Form predicate to insert into Phi function
+    ArrayList<TerminalNode> ctxTokens = getAllTokensFromContext(expressionContext);
+    for (TerminalNode token : ctxTokens) {
+      String tokenText = token.getText();
+      int tokenType = token.getSymbol().getType();
+      if (tokenType == IDENTIFIER_TYPE) {
+        int subscript = varSubscriptsBeforePredicate.get(tokenText);
+        String ssaFormVariable = tokenText + "_" + subscript;
+        predicate += ssaFormVariable;
+      } else
+        predicate += tokenText;
+      predicate += " ";
+    }
+    predicate = predicate.trim();
+
+    return predicate;
+  }
+
+  public String extractSSAFormUpdatePredicate(ParserRuleContext expressionContext) {
+    String predicate = "";
+
+    // Get the SSA Form predicate to insert into Phi function
+    ArrayList<TerminalNode> ctxTokens = getAllTokensFromContext(expressionContext);
     for (TerminalNode token : ctxTokens) {
       String tokenText = token.getText();
       int tokenType = token.getSymbol().getType();
@@ -161,20 +256,14 @@ public class Converter extends Java8BaseListener {
         predicate += tokenText;
       predicate += " ";
     }
+    predicate = predicate.trim();
 
-    // TODO: Type checking and changes for different data types
-    String phiObject = "PhiIf<" + type + "> phi" + phiCounter + " = new PhiIf(" + predicate + ");";
-    rewriter.insertBefore(ctx.getStart(), "\n    " + phiObject + "\n    ");
-    phiCounter++;
+    return predicate;
+  }
 
-    // TODO: Create phi.merge() calls for each assignment after the if statement
-    rewriter.insertAfter(ctx.getStop(), "\n    ");
-    for (String var : predicateBlockVariables) {
-      int subscript = currentVariableSubscriptMap.get(var);
-      rewriter.insertAfter(ctx.getStop(), var + "_" + (subscript + 1) + ";\n");
-      currentVariableSubscriptMap.put(var, subscript + 1);
-    }
-    predicateBlockVariables.clear();
+  public void updateVariableSubscriptPredicateStack() {
+    HashMap<String, Integer> varSubscriptsBeforePredicate = new HashMap<>(currentVariableSubscriptMap);
+    varSubscriptsBeforePredicateStack.push(varSubscriptsBeforePredicate);
   }
 
   // Get all tokens in a given context
