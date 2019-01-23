@@ -1,5 +1,6 @@
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.LinkedList;
 import java.util.ArrayList;
 import java.util.Stack;
 
@@ -7,7 +8,6 @@ import org.antlr.v4.runtime.TokenStream;
 import org.antlr.v4.runtime.CommonTokenStream;
 import org.antlr.v4.runtime.TokenStreamRewriter;
 import org.antlr.v4.runtime.tree.TerminalNode;
-
 import org.antlr.v4.runtime.ParserRuleContext;
 
 public class Converter extends Java8BaseListener {
@@ -22,6 +22,7 @@ public class Converter extends Java8BaseListener {
       put("double", "Double");
       put("boolean", "Boolean");
       put("float", "Float");
+      put("long", "Long");
     }
   };
 
@@ -32,7 +33,10 @@ public class Converter extends Java8BaseListener {
   TokenStream tokens;
 
   // Counter for Phi functions
-  int phiCounter = 0;
+  int phiCounter = -1;
+
+  // Keep phi subscripts in a queue
+  LinkedList<Integer> phiSubscriptQueue = new LinkedList<>();
 
   // Variables in predicate block being assigned
   Stack<HashSet<String>> predicateBlockVariablesStack = new Stack<>();
@@ -160,6 +164,8 @@ public class Converter extends Java8BaseListener {
   public void enterIfThenStatement(Java8Parser.IfThenStatementContext ctx) {
     updateVariableSubscriptPredicateStack();
     predicateBlockVariablesStack.push(new HashSet<String>());
+    phiSubscriptQueue.addLast(phiCounter);
+    phiCounter++;
   }
 
   @Override
@@ -167,12 +173,13 @@ public class Converter extends Java8BaseListener {
     HashMap<String, Integer> varSubscriptsBeforePredicate = varSubscriptsBeforePredicateStack.pop();
     String type = "Integer";
     ParserRuleContext exprCtx = ctx.expression();
+    int phiSubscript = phiSubscriptQueue.removeFirst();
 
     // Get the SSA Form predicate to insert into Phi function
     String predicate = extractSSAFormPredicate(ctx.expression(), varSubscriptsBeforePredicate);
 
     // TODO: Type checking and changes for different data types
-    String phiObject = "PhiIf<" + type + "> phi" + phiCounter + " = new PhiIf(" + predicate + ");";
+    String phiObject = "PhiIf<" + type + "> phi" + phiCounter + " = new PhiIf<>(" + predicate + ");";
     rewriter.insertBefore(ctx.getStart(), "\n    " + phiObject + "\n    ");
 
     rewriter.insertAfter(ctx.getStop(), "\n");
@@ -188,7 +195,7 @@ public class Converter extends Java8BaseListener {
       currentVariableSubscriptMap.put(var, subscript + 1);
     }
     rewriter.replace(exprCtx.getStart(), exprCtx.getStop(), "phi" + phiCounter + ".getPredVal()");
-    phiCounter++;
+
     predicateBlockVariablesStack.pop();
   }
 
@@ -196,6 +203,8 @@ public class Converter extends Java8BaseListener {
   public void enterWhileStatement(Java8Parser.WhileStatementContext ctx) {
     updateVariableSubscriptPredicateStack();
     predicateBlockVariablesStack.push(new HashSet<String>());
+    phiSubscriptQueue.addLast(phiCounter);
+    phiCounter++;
   }
 
   @Override
@@ -203,19 +212,21 @@ public class Converter extends Java8BaseListener {
     HashMap<String, Integer> varSubscriptsBeforePredicate = varSubscriptsBeforePredicateStack.pop();
     String type = "Integer";
     ParserRuleContext exprCtx = ctx.expression();
+    int phiSubscript = phiSubscriptQueue.removeFirst();
 
     // Get the SSA Form predicate to insert into Phi function
     String predicate = extractSSAFormPredicate(ctx.expression(), varSubscriptsBeforePredicate);
-    String phiObject = "PhiIf<" + type + "> phi" + phiCounter + " = new PhiWhile(" + predicate + ");";
+    String phiObject = "PhiWhile<" + type + "> phi" + phiSubscript + " = new PhiWhile<>(" + predicate + ");";
     rewriter.insertBefore(ctx.getStart(), "\n    " + phiObject + "\n    ");
 
-    rewriter.replace(exprCtx.getStart(), exprCtx.getStop(), "phi" + phiCounter + ".getPredVal()");
+    rewriter.replace(exprCtx.getStart(), exprCtx.getStop(), "phi" + phiSubscript + ".getPredVal()");
 
     String updatePredicate = extractSSAFormUpdatePredicate(ctx.expression());
-    rewriter.insertBefore(ctx.getStop(), "  phi" + phiCounter + ".evalPred(" + updatePredicate + ");\n    ");
-    // TODO: phi.entry()
-    // TODO: phi.exit()
+    rewriter.insertBefore(ctx.getStop(), "  phi" + phiSubscript + ".evalPred(" + updatePredicate + ");\n    ");
 
+    // TODO: phi.entry()
+    //? Can I reverse the subscripts of the phi functions?? Talk to Andy.
+    // TODO: phi.exit()
   }
 
   public String extractSSAFormPredicate(ParserRuleContext expressionContext,
