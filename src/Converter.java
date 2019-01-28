@@ -3,12 +3,14 @@ import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.ArrayList;
 import java.util.Stack;
+import javafx.util.Pair;
 
 import org.antlr.v4.runtime.TokenStream;
 import org.antlr.v4.runtime.CommonTokenStream;
 import org.antlr.v4.runtime.TokenStreamRewriter;
 import org.antlr.v4.runtime.tree.TerminalNode;
 import org.antlr.v4.runtime.ParserRuleContext;
+import org.antlr.v4.runtime.Token;
 
 public class Converter extends Java8BaseListener {
 
@@ -41,6 +43,12 @@ public class Converter extends Java8BaseListener {
   // Variables in predicate block being assigned
   Stack<HashSet<String>> predicateBlockVariablesStack = new Stack<>();
 
+  // Keep track of all predicate variables
+  Stack<HashSet<String>> whileLoopVariableStack = new Stack<>();
+
+  // While loop tokens to change
+  ArrayList<Pair<String, Token>> whileLoopTokens = new ArrayList<>();
+
   // Variable subscripts before entering the predicate block
   Stack<HashMap<String, Integer>> varSubscriptsBeforePredicateStack = new Stack<>();
 
@@ -71,6 +79,10 @@ public class Converter extends Java8BaseListener {
     if (isDescendantOf(ctx, Java8Parser.IfThenStatementContext.class)
         || isDescendantOf(ctx, Java8Parser.WhileStatementContext.class))
       predicateBlockVariablesStack.lastElement().add(variable);
+
+    if (isDescendantOf(ctx, Java8Parser.WhileStatementContext.class))
+      whileLoopVariableStack.lastElement().add(variable);
+
     rewriter.replace(ctx.getStart(), variable + "_" + subscript);
   }
 
@@ -94,10 +106,15 @@ public class Converter extends Java8BaseListener {
   // When entering any expression, change the variable to SSA form
   @Override
   public void enterExpressionName(Java8Parser.ExpressionNameContext ctx) {
+    if (isDescendantOf(ctx, Java8Parser.LeftHandSideContext.class))
+      return;
     String varName = tokens.getText(ctx);
     int subscript = currentVariableSubscriptMap.get(varName);
-    if (!isDescendantOf(ctx, Java8Parser.LeftHandSideContext.class))
+    if (isDescendantOf(ctx, Java8Parser.WhileStatementContext.class) && !insidePredicate(ctx)) {
+      whileLoopTokens.add(new Pair<String, Token>(varName, ctx.getStart()));
+    } else if (!isDescendantOf(ctx, Java8Parser.WhileStatementContext.class)) {
       rewriter.replace(ctx.getStart(), varName + "_" + subscript);
+    }
   }
 
   // Upon exiting an assignment, increment the subscript counter
@@ -176,6 +193,7 @@ public class Converter extends Java8BaseListener {
     int phiSubscript = phiSubscriptQueue.removeFirst();
 
     // Get the SSA Form predicate to insert into Phi function
+
     String predicate = extractSSAFormPredicate(ctx.expression(), varSubscriptsBeforePredicate);
 
     // TODO: Type checking and changes for different data types
@@ -183,7 +201,7 @@ public class Converter extends Java8BaseListener {
     rewriter.insertBefore(ctx.getStart(), "\n    " + phiObject + "\n    ");
 
     rewriter.insertAfter(ctx.getStop(), "\n");
-    for (String var : predicateBlockVariablesStack.lastElement()) {
+    for (String var : predicateBlockVariablesStack.pop()) {
       rewriter.insertAfter(ctx.getStop(), "    ");
       int subscript = currentVariableSubscriptMap.get(var);
       int prePredicateSubscript = varSubscriptsBeforePredicate.get(var);
@@ -196,12 +214,13 @@ public class Converter extends Java8BaseListener {
     }
     rewriter.replace(exprCtx.getStart(), exprCtx.getStop(), "phi" + phiCounter + ".getPredVal()");
 
-    predicateBlockVariablesStack.pop();
   }
 
   @Override
   public void enterWhileStatement(Java8Parser.WhileStatementContext ctx) {
     updateVariableSubscriptPredicateStack();
+    whileLoopVariableStack.push(new HashSet<String>());
+
     predicateBlockVariablesStack.push(new HashSet<String>());
     phiSubscriptQueue.addLast(phiCounter);
     phiCounter++;
@@ -224,9 +243,50 @@ public class Converter extends Java8BaseListener {
     String updatePredicate = extractSSAFormUpdatePredicate(ctx.expression());
     rewriter.insertBefore(ctx.getStop(), "  phi" + phiSubscript + ".evalPred(" + updatePredicate + ");\n    ");
 
+    HashSet<String> whileLoopVariables = whileLoopVariableStack.pop();
     // TODO: phi.entry()
-    //? Can I reverse the subscripts of the phi functions?? Talk to Andy.
-    // TODO: phi.exit()
+    rewriter.insertAfter(ctx.statement().getStart(), "\n    ");
+    rewriter.insertAfter(ctx.getStop(), "\n    ");
+    for (String whileLoopVariable : whileLoopVariables) {
+      int subscriptBeforePredicate = varSubscriptsBeforePredicate.get(whileLoopVariable);
+      int currentSubscript = currentVariableSubscriptMap.get(whileLoopVariable);
+      rewriter.insertAfter(ctx.statement().getStart(),
+          whileLoopVariable + "_" + (currentSubscript + 1) + " = phi" + phiSubscript + ".entry(" + whileLoopVariable
+              + "_" + subscriptBeforePredicate + "," + whileLoopVariable + "_" + currentSubscript + ");" + "\n    ");
+      currentVariableSubscriptMap.put(whileLoopVariable, currentSubscript + 1);
+    }
+    for (Pair<String, Token> entry : whileLoopTokens) {
+      rewriter.replace(entry.getValue(), entry.getKey() + "_" + currentVariableSubscriptMap.get(entry.getKey()));
+
+    }
+    for (String whileLoopVariable : whileLoopVariables) {
+      int subscriptBeforePredicate = varSubscriptsBeforePredicate.get(whileLoopVariable);
+      int currentSubscript = currentVariableSubscriptMap.get(whileLoopVariable);
+      rewriter.insertAfter(ctx.getStop(),
+          whileLoopVariable + "_" + (currentSubscript + 1) + " = phi" + phiSubscript + ".exit(" + whileLoopVariable
+              + "_" + subscriptBeforePredicate + "," + whileLoopVariable + "_" + currentSubscript + ");" + "\n    ");
+      currentVariableSubscriptMap.put(whileLoopVariable, currentSubscript + 1);
+    }
+    // TODO: If phi function inside while loop, change subscripts in phi functions when exiting while
+  }
+
+  public boolean insidePredicate(ParserRuleContext ctx) {
+    while (ctx.getParent().getParent() != null) {
+      if (Java8Parser.ExpressionContext.class.isInstance(ctx.getParent())
+          && (Java8Parser.IfThenStatementContext.class.isInstance(ctx.getParent().getParent())
+              || Java8Parser.WhileStatementContext.class.isInstance(ctx.getParent().getParent())))
+        return true;
+      ctx = ctx.getParent();
+    }
+    return false;
+  }
+
+  public HashSet<String> getAllCurrentPredicateVariables() {
+    HashSet<String> allCurrentPredicateVariables = new HashSet<>();
+    for (HashSet<String> predicateSet : predicateBlockVariablesStack) {
+      allCurrentPredicateVariables.addAll(predicateSet);
+    }
+    return allCurrentPredicateVariables;
   }
 
   public String extractSSAFormPredicate(ParserRuleContext expressionContext,

@@ -30,9 +30,9 @@ public class Driver {
 
     walker.walk(converter, tree);
 
-    BufferedWriter writer = new BufferedWriter(new FileWriter("out.java"));
-    writer.write(rewriter.getText());
-    writer.close();
+    // BufferedWriter writer = new BufferedWriter(new FileWriter("out.java"));
+    // writer.write(rewriter.getText());
+    // writer.close();
     // for (int i = 0; i < parser.getVocabulary().getMaxTokenType(); i++) {
     //   System.out.println(
     //       i + " = " + parser.getVocabulary().getDisplayName(i) + ", " + parser.getVocabulary().getLiteralName(i));
