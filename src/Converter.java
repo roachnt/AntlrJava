@@ -14,6 +14,7 @@ import org.antlr.v4.runtime.Token;
 
 // TODO: If-Else
 // TODO: Else-If
+// TODO: For-loop
 // TODO: Phi Function Types
 
 public class Converter extends Java8BaseListener {
@@ -47,6 +48,12 @@ public class Converter extends Java8BaseListener {
   // Variables in predicate block being assigned
   Stack<HashSet<String>> predicateBlockVariablesStack = new Stack<>();
 
+  // Variables in "if" branch of if-else block being assigned
+  Stack<HashSet<String>> ifElseTrueVariablesStack = new Stack<>();
+
+  // Variables in "else" branch of if-else block being assigned
+  Stack<HashSet<String>> ifElseFalseVariablesStack = new Stack<>();
+
   // Keep track of all predicate variables
   Stack<HashSet<String>> whileLoopVariableStack = new Stack<>();
 
@@ -55,6 +62,9 @@ public class Converter extends Java8BaseListener {
 
   // PhiIf declarations deferred for while loop
   Stack<HashMap<Integer, Java8Parser.IfThenStatementContext>> deferredPhiIfDeclarations = new Stack<>();
+
+  // PhiIfElse declarations deferred for while loop
+  Stack<HashMap<Integer, Java8Parser.IfThenElseStatementContext>> deferredPhiIfElseDeclarations = new Stack<>();
 
   // PhiIf merges deferred for while loop
   Stack<HashMap<Java8Parser.IfThenStatementContext, ArrayList<String>>> deferredPhiIfMerges = new Stack<>();
@@ -86,6 +96,8 @@ public class Converter extends Java8BaseListener {
     if (currentVariableSubscriptMap.containsKey(variable))
       subscript = currentVariableSubscriptMap.get(variable) + 1;
 
+    // If the variable is inside an if statement or while statement, 
+    // add variable to the set of predicate variables
     if (isDescendantOf(ctx, Java8Parser.IfThenStatementContext.class)
         || isDescendantOf(ctx, Java8Parser.WhileStatementContext.class))
       predicateBlockVariablesStack.lastElement().add(variable);
@@ -202,8 +214,11 @@ public class Converter extends Java8BaseListener {
 
   @Override
   public void enterIfThenStatement(Java8Parser.IfThenStatementContext ctx) {
+    // Collect variable subscripts before entering predicate
     updateVariableSubscriptPredicateStack();
+    // Create new set to collect variables inside predicate block
     predicateBlockVariablesStack.push(new HashSet<String>());
+    // Increment phi subscript
     phiSubscriptQueue.addLast(++phiCounter);
   }
 
@@ -246,10 +261,40 @@ public class Converter extends Java8BaseListener {
   }
 
   @Override
+  public void enterIfThenElseStatement(Java8Parser.IfThenElseStatementContext ctx) {
+    // Collect variable subscripts before entering predicate
+    updateVariableSubscriptPredicateStack();
+    // Create new set to collect variables inside predicate block
+    predicateBlockVariablesStack.push(new HashSet<String>());
+    // Increment phi subscript
+    phiSubscriptQueue.addLast(++phiCounter);
+  }
+
+  @Override
+  public void exitIfThenElseStatement(Java8Parser.IfThenElseStatementContext ctx) {
+    HashMap<String, Integer> varSubscriptsBeforePredicate = varSubscriptsBeforePredicateStack.pop();
+    String type = "Integer";
+    ParserRuleContext exprCtx = ctx.expression();
+    int phiSubscript = phiSubscriptQueue.removeLast();
+
+    // Get the SSA Form predicate to insert into Phi function
+    String predicate = extractSSAFormPredicate(ctx.expression(), varSubscriptsBeforePredicate);
+
+    // TODO: Type checking and changes for different data types
+    if (isDescendantOf(ctx, Java8Parser.WhileStatementContext.class))
+      deferredPhiIfElseDeclarations.lastElement().put(phiCounter, ctx);
+    else
+      writePhiIfElseDeclaration(ctx, type, phiCounter, varSubscriptsBeforePredicate);
+
+    rewriter.replace(exprCtx.getStart(), exprCtx.getStop(), "phi" + phiCounter + ".getPredVal()");
+  }
+
+  @Override
   public void enterWhileStatement(Java8Parser.WhileStatementContext ctx) {
     updateVariableSubscriptPredicateStack();
     whileLoopVariableStack.push(new HashSet<String>());
     deferredPhiIfDeclarations.add(new HashMap<Integer, Java8Parser.IfThenStatementContext>());
+    deferredPhiIfElseDeclarations.add(new HashMap<Integer, Java8Parser.IfThenElseStatementContext>());
     deferredPhiIfMerges.add(new HashMap<Java8Parser.IfThenStatementContext, ArrayList<String>>());
 
     predicateBlockVariablesStack.push(new HashSet<String>());
@@ -290,6 +335,10 @@ public class Converter extends Java8BaseListener {
         .entrySet())
       writePhiIfMerge(entry.getKey(), entry.getValue().get(0), entry.getValue().get(1), entry.getValue().get(2),
           entry.getValue().get(3) + "_" + currentVariableSubscriptMap.get(entry.getValue().get(3)));
+
+    for (HashMap.Entry<Integer, Java8Parser.IfThenElseStatementContext> entry : deferredPhiIfElseDeclarations.pop()
+        .entrySet())
+      writePhiIfElseDeclaration(entry.getValue(), "Integer", entry.getKey(), currentVariableSubscriptMap);
 
     writeWhileExit(ctx, whileLoopVariables, varSubscriptsBeforePredicate, phiSubscript);
 
@@ -332,10 +381,18 @@ public class Converter extends Java8BaseListener {
     rewriter.insertBefore(ctx.getStart(), "\n    " + phiObject + "\n    ");
   }
 
+  public void writePhiIfElseDeclaration(Java8Parser.IfThenElseStatementContext ctx, String type, int phiSubscript,
+      HashMap<String, Integer> varSubscriptsBeforePredicate) {
+    String predicate = extractSSAFormPredicate(ctx.expression(), varSubscriptsBeforePredicate);
+    String phiObject = "PhiIfElse<" + type + "> phi" + phiSubscript + " = new PhiIfElse<>(" + predicate + ");";
+    rewriter.insertBefore(ctx.getStart(), "\n    " + phiObject + "\n    ");
+  }
+
   public boolean insidePredicate(ParserRuleContext ctx) {
     while (ctx.getParent().getParent() != null) {
       if (Java8Parser.ExpressionContext.class.isInstance(ctx.getParent())
-          && (Java8Parser.IfThenStatementContext.class.isInstance(ctx.getParent().getParent())
+          && (Java8Parser.IfThenElseStatementContext.class.isInstance(ctx.getParent().getParent()))
+          || (Java8Parser.IfThenStatementContext.class.isInstance(ctx.getParent().getParent())
               || Java8Parser.WhileStatementContext.class.isInstance(ctx.getParent().getParent())))
         return true;
       ctx = ctx.getParent();
@@ -394,6 +451,7 @@ public class Converter extends Java8BaseListener {
     return predicate;
   }
 
+  // Stack up the current subscripts of variables before enterting a predicate block
   public void updateVariableSubscriptPredicateStack() {
     HashMap<String, Integer> varSubscriptsBeforePredicate = new HashMap<>(currentVariableSubscriptMap);
     varSubscriptsBeforePredicateStack.push(varSubscriptsBeforePredicate);
