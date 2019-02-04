@@ -204,8 +204,7 @@ public class Converter extends Java8BaseListener {
   public void enterIfThenStatement(Java8Parser.IfThenStatementContext ctx) {
     updateVariableSubscriptPredicateStack();
     predicateBlockVariablesStack.push(new HashSet<String>());
-    phiSubscriptQueue.addLast(phiCounter);
-    phiCounter++;
+    phiSubscriptQueue.addLast(++phiCounter);
   }
 
   @Override
@@ -213,7 +212,7 @@ public class Converter extends Java8BaseListener {
     HashMap<String, Integer> varSubscriptsBeforePredicate = varSubscriptsBeforePredicateStack.pop();
     String type = "Integer";
     ParserRuleContext exprCtx = ctx.expression();
-    int phiSubscript = phiSubscriptQueue.removeFirst();
+    int phiSubscript = phiSubscriptQueue.removeLast();
 
     // Get the SSA Form predicate to insert into Phi function
     String predicate = extractSSAFormPredicate(ctx.expression(), varSubscriptsBeforePredicate);
@@ -254,8 +253,7 @@ public class Converter extends Java8BaseListener {
     deferredPhiIfMerges.add(new HashMap<Java8Parser.IfThenStatementContext, ArrayList<String>>());
 
     predicateBlockVariablesStack.push(new HashSet<String>());
-    phiSubscriptQueue.addLast(phiCounter);
-    phiCounter++;
+    phiSubscriptQueue.addLast(++phiCounter);
   }
 
   @Override
@@ -263,7 +261,7 @@ public class Converter extends Java8BaseListener {
     HashMap<String, Integer> varSubscriptsBeforePredicate = varSubscriptsBeforePredicateStack.pop();
     String type = "Integer";
     ParserRuleContext exprCtx = ctx.expression();
-    int phiSubscript = phiSubscriptQueue.removeFirst();
+    int phiSubscript = phiSubscriptQueue.removeLast();
     HashSet<String> whileLoopVariables = whileLoopVariableStack.pop();
 
     // Get the SSA Form predicate to insert into Phi function
