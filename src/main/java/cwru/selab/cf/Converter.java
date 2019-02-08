@@ -1,16 +1,17 @@
+package cwru.selab.cf;
+
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedList;
-import java.util.ArrayList;
 import java.util.Stack;
-import javafx.util.Pair;
-
-import org.antlr.v4.runtime.TokenStream;
-import org.antlr.v4.runtime.CommonTokenStream;
-import org.antlr.v4.runtime.TokenStreamRewriter;
-import org.antlr.v4.runtime.tree.TerminalNode;
 import org.antlr.v4.runtime.ParserRuleContext;
 import org.antlr.v4.runtime.Token;
+import org.antlr.v4.runtime.TokenStream;
+import org.antlr.v4.runtime.TokenStreamRewriter;
+import org.antlr.v4.runtime.tree.TerminalNode;
+import org.apache.commons.lang3.tuple.ImmutablePair;
+import org.apache.commons.lang3.tuple.Pair;
 
 // TODO: If-Else
 // TODO: Else-If
@@ -22,15 +23,16 @@ public class Converter extends Java8BaseListener {
 
   Java8Parser parser;
 
-  HashMap<String, String> dataTypeToObjectMap = new HashMap<String, String>() {
-    {
-      put("int", "Integer");
-      put("double", "Double");
-      put("boolean", "Boolean");
-      put("float", "Float");
-      put("long", "Long");
-    }
-  };
+  HashMap<String, String> dataTypeToObjectMap =
+      new HashMap<String, String>() {
+        {
+          put("int", "Integer");
+          put("double", "Double");
+          put("boolean", "Boolean");
+          put("float", "Float");
+          put("long", "Long");
+        }
+      };
 
   // Rewriting mechanism
   TokenStreamRewriter rewriter;
@@ -54,10 +56,12 @@ public class Converter extends Java8BaseListener {
   ArrayList<Pair<String, Token>> whileLoopTokens = new ArrayList<>();
 
   // PhiIf declarations deferred for while loop
-  Stack<HashMap<Integer, Java8Parser.IfThenStatementContext>> deferredPhiIfDeclarations = new Stack<>();
+  Stack<HashMap<Integer, Java8Parser.IfThenStatementContext>> deferredPhiIfDeclarations =
+      new Stack<>();
 
   // PhiIf merges deferred for while loop
-  Stack<HashMap<Java8Parser.IfThenStatementContext, ArrayList<String>>> deferredPhiIfMerges = new Stack<>();
+  Stack<HashMap<Java8Parser.IfThenStatementContext, ArrayList<String>>> deferredPhiIfMerges =
+      new Stack<>();
 
   // Variable subscripts before entering the predicate block
   Stack<HashMap<String, Integer>> varSubscriptsBeforePredicateStack = new Stack<>();
@@ -102,8 +106,8 @@ public class Converter extends Java8BaseListener {
     String type = tokens.getText(ctx.unannType());
     for (int i = 0; i < ctx.variableDeclaratorList().variableDeclarator().size(); i++) {
       int subscript = 0;
-      Java8Parser.VariableDeclaratorIdContext varContext = ctx.variableDeclaratorList().variableDeclarator(0)
-          .variableDeclaratorId();
+      Java8Parser.VariableDeclaratorIdContext varContext =
+          ctx.variableDeclaratorList().variableDeclarator(0).variableDeclaratorId();
       String variable = tokens.getText(varContext);
       rewriter.replace(varContext.getStart(), "");
       rewriter.replace(varContext.getStop(), "");
@@ -118,16 +122,14 @@ public class Converter extends Java8BaseListener {
   public void enterExpressionName(Java8Parser.ExpressionNameContext ctx) {
 
     // Only changing right hand side in this context
-    if (isDescendantOf(ctx, Java8Parser.LeftHandSideContext.class))
-      return;
+    if (isDescendantOf(ctx, Java8Parser.LeftHandSideContext.class)) return;
 
     String varName = tokens.getText(ctx);
     int subscript = currentVariableSubscriptMap.get(varName);
     if (isDescendantOf(ctx, Java8Parser.WhileStatementContext.class) && !insidePredicate(ctx))
-      whileLoopTokens.add(new Pair<String, Token>(varName, ctx.getStart()));
+      whileLoopTokens.add(new ImmutablePair<String, Token>(varName, ctx.getStart()));
     else if (!isDescendantOf(ctx, Java8Parser.WhileStatementContext.class))
       rewriter.replace(ctx.getStart(), varName + "_" + subscript);
-
   }
 
   // Upon exiting an assignment, increment the subscript counter
@@ -158,7 +160,8 @@ public class Converter extends Java8BaseListener {
   public void enterMethodBody(Java8Parser.MethodBodyContext ctx) {
     for (HashMap.Entry<String, String> entry : variableTypeMap.entrySet()) {
       int subscript = currentVariableSubscriptMap.get(entry.getKey());
-      initializeFormalParams += "\n    " + entry.getKey() + "_" + subscript + " = " + entry.getKey() + ";";
+      initializeFormalParams +=
+          "\n    " + entry.getKey() + "_" + subscript + " = " + entry.getKey() + ";";
     }
   }
 
@@ -221,8 +224,7 @@ public class Converter extends Java8BaseListener {
     // TODO: Type checking and changes for different data types
     if (isDescendantOf(ctx, Java8Parser.WhileStatementContext.class))
       deferredPhiIfDeclarations.lastElement().put(phiCounter, ctx);
-    else
-      writePhiIfDeclaration(ctx, type, phiCounter, varSubscriptsBeforePredicate);
+    else writePhiIfDeclaration(ctx, type, phiCounter, varSubscriptsBeforePredicate);
 
     rewriter.insertAfter(ctx.getStop(), "\n");
     for (String var : predicateBlockVariablesStack.pop()) {
@@ -239,7 +241,11 @@ public class Converter extends Java8BaseListener {
         deferredPhiIfMerges.lastElement().get(ctx).add(predicateVariable);
         deferredPhiIfMerges.lastElement().get(ctx).add(var);
       } else
-        writePhiIfMerge(ctx, var + "_" + (subscript + 1), String.valueOf(phiCounter), predicateVariable,
+        writePhiIfMerge(
+            ctx,
+            var + "_" + (subscript + 1),
+            String.valueOf(phiCounter),
+            predicateVariable,
             beforePredicateVariable);
       currentVariableSubscriptMap.put(var, subscript + 1);
     }
@@ -268,13 +274,15 @@ public class Converter extends Java8BaseListener {
 
     // Get the SSA Form predicate to insert into Phi function
     String predicate = extractSSAFormPredicate(ctx.expression(), varSubscriptsBeforePredicate);
-    String phiObject = "PhiWhile<" + type + "> phi" + phiSubscript + " = new PhiWhile<>(" + predicate + ");";
+    String phiObject =
+        "PhiWhile<" + type + "> phi" + phiSubscript + " = new PhiWhile<>(" + predicate + ");";
     rewriter.insertBefore(ctx.getStart(), "\n    " + phiObject + "\n    ");
 
     rewriter.replace(exprCtx.getStart(), exprCtx.getStop(), "phi" + phiSubscript + ".getPredVal()");
 
     String updatePredicate = extractSSAFormUpdatePredicate(ctx.expression());
-    rewriter.insertBefore(ctx.getStop(), "  phi" + phiSubscript + ".evalPred(" + updatePredicate + ");\n    ");
+    rewriter.insertBefore(
+        ctx.getStop(), "  phi" + phiSubscript + ".evalPred(" + updatePredicate + ");\n    ");
 
     rewriter.insertAfter(ctx.statement().getStart(), "\n    ");
     rewriter.insertAfter(ctx.getStop(), "\n    ");
@@ -283,54 +291,110 @@ public class Converter extends Java8BaseListener {
 
     // Take care of SSA variables that had to be put off for while loop
     for (Pair<String, Token> entry : whileLoopTokens)
-      rewriter.replace(entry.getValue(), entry.getKey() + "_" + currentVariableSubscriptMap.get(entry.getKey()));
+      rewriter.replace(
+          entry.getValue(), entry.getKey() + "_" + currentVariableSubscriptMap.get(entry.getKey()));
 
-    for (HashMap.Entry<Integer, Java8Parser.IfThenStatementContext> entry : deferredPhiIfDeclarations.pop().entrySet())
-      writePhiIfDeclaration(entry.getValue(), "Integer", entry.getKey(), currentVariableSubscriptMap);
+    for (HashMap.Entry<Integer, Java8Parser.IfThenStatementContext> entry :
+        deferredPhiIfDeclarations.pop().entrySet())
+      writePhiIfDeclaration(
+          entry.getValue(), "Integer", entry.getKey(), currentVariableSubscriptMap);
 
-    for (HashMap.Entry<Java8Parser.IfThenStatementContext, ArrayList<String>> entry : deferredPhiIfMerges.pop()
-        .entrySet())
-      writePhiIfMerge(entry.getKey(), entry.getValue().get(0), entry.getValue().get(1), entry.getValue().get(2),
+    for (HashMap.Entry<Java8Parser.IfThenStatementContext, ArrayList<String>> entry :
+        deferredPhiIfMerges.pop().entrySet())
+      writePhiIfMerge(
+          entry.getKey(),
+          entry.getValue().get(0),
+          entry.getValue().get(1),
+          entry.getValue().get(2),
           entry.getValue().get(3) + "_" + currentVariableSubscriptMap.get(entry.getValue().get(3)));
 
     writeWhileExit(ctx, whileLoopVariables, varSubscriptsBeforePredicate, phiSubscript);
-
   }
 
-  public void writeWhileExit(Java8Parser.WhileStatementContext ctx, HashSet<String> whileLoopVariables,
-      HashMap<String, Integer> varSubscriptsBeforePredicate, int phiSubscript) {
+  public void writeWhileExit(
+      Java8Parser.WhileStatementContext ctx,
+      HashSet<String> whileLoopVariables,
+      HashMap<String, Integer> varSubscriptsBeforePredicate,
+      int phiSubscript) {
     for (String whileLoopVariable : whileLoopVariables) {
       int subscriptBeforePredicate = varSubscriptsBeforePredicate.get(whileLoopVariable);
       int currentSubscript = currentVariableSubscriptMap.get(whileLoopVariable);
-      rewriter.insertAfter(ctx.getStop(),
-          whileLoopVariable + "_" + (currentSubscript + 1) + " = phi" + phiSubscript + ".exit(" + whileLoopVariable
-              + "_" + subscriptBeforePredicate + "," + whileLoopVariable + "_" + currentSubscript + ");" + "\n    ");
+      rewriter.insertAfter(
+          ctx.getStop(),
+          whileLoopVariable
+              + "_"
+              + (currentSubscript + 1)
+              + " = phi"
+              + phiSubscript
+              + ".exit("
+              + whileLoopVariable
+              + "_"
+              + subscriptBeforePredicate
+              + ","
+              + whileLoopVariable
+              + "_"
+              + currentSubscript
+              + ");"
+              + "\n    ");
       currentVariableSubscriptMap.put(whileLoopVariable, currentSubscript + 1);
     }
   }
 
-  public void writeWhileEntry(Java8Parser.WhileStatementContext ctx, HashSet<String> whileLoopVariables,
-      HashMap<String, Integer> varSubscriptsBeforePredicate, int phiSubscript) {
+  public void writeWhileEntry(
+      Java8Parser.WhileStatementContext ctx,
+      HashSet<String> whileLoopVariables,
+      HashMap<String, Integer> varSubscriptsBeforePredicate,
+      int phiSubscript) {
     for (String whileLoopVariable : whileLoopVariables) {
       int subscriptBeforePredicate = varSubscriptsBeforePredicate.get(whileLoopVariable);
       int currentSubscript = currentVariableSubscriptMap.get(whileLoopVariable);
-      rewriter.insertAfter(ctx.statement().getStart(),
-          whileLoopVariable + "_" + (currentSubscript + 1) + " = phi" + phiSubscript + ".entry(" + whileLoopVariable
-              + "_" + subscriptBeforePredicate + "," + whileLoopVariable + "_" + currentSubscript + ");" + "\n    ");
+      rewriter.insertAfter(
+          ctx.statement().getStart(),
+          whileLoopVariable
+              + "_"
+              + (currentSubscript + 1)
+              + " = phi"
+              + phiSubscript
+              + ".entry("
+              + whileLoopVariable
+              + "_"
+              + subscriptBeforePredicate
+              + ","
+              + whileLoopVariable
+              + "_"
+              + currentSubscript
+              + ");"
+              + "\n    ");
       currentVariableSubscriptMap.put(whileLoopVariable, currentSubscript + 1);
     }
   }
 
-  public void writePhiIfMerge(Java8Parser.IfThenStatementContext ctx, String assignedVariable, String phiSubscript,
-      String predicateVariable, String beforePredicateVariable) {
-    rewriter.insertAfter(ctx.getStop(), assignedVariable + " = phi" + phiSubscript + ".merge(" + predicateVariable + ","
-        + beforePredicateVariable + ");\n");
+  public void writePhiIfMerge(
+      Java8Parser.IfThenStatementContext ctx,
+      String assignedVariable,
+      String phiSubscript,
+      String predicateVariable,
+      String beforePredicateVariable) {
+    rewriter.insertAfter(
+        ctx.getStop(),
+        assignedVariable
+            + " = phi"
+            + phiSubscript
+            + ".merge("
+            + predicateVariable
+            + ","
+            + beforePredicateVariable
+            + ");\n");
   }
 
-  public void writePhiIfDeclaration(Java8Parser.IfThenStatementContext ctx, String type, int phiSubscript,
+  public void writePhiIfDeclaration(
+      Java8Parser.IfThenStatementContext ctx,
+      String type,
+      int phiSubscript,
       HashMap<String, Integer> varSubscriptsBeforePredicate) {
     String predicate = extractSSAFormPredicate(ctx.expression(), varSubscriptsBeforePredicate);
-    String phiObject = "PhiIf<" + type + "> phi" + phiSubscript + " = new PhiIf<>(" + predicate + ");";
+    String phiObject =
+        "PhiIf<" + type + "> phi" + phiSubscript + " = new PhiIf<>(" + predicate + ");";
     rewriter.insertBefore(ctx.getStart(), "\n    " + phiObject + "\n    ");
   }
 
@@ -353,8 +417,8 @@ public class Converter extends Java8BaseListener {
     return allCurrentPredicateVariables;
   }
 
-  public String extractSSAFormPredicate(ParserRuleContext expressionContext,
-      HashMap<String, Integer> varSubscriptsBeforePredicate) {
+  public String extractSSAFormPredicate(
+      ParserRuleContext expressionContext, HashMap<String, Integer> varSubscriptsBeforePredicate) {
     String predicate = "";
 
     // Get the SSA Form predicate to insert into Phi function
@@ -366,8 +430,7 @@ public class Converter extends Java8BaseListener {
         int subscript = varSubscriptsBeforePredicate.get(tokenText);
         String ssaFormVariable = tokenText + "_" + subscript;
         predicate += ssaFormVariable;
-      } else
-        predicate += tokenText;
+      } else predicate += tokenText;
       predicate += " ";
     }
     predicate = predicate.trim();
@@ -387,8 +450,7 @@ public class Converter extends Java8BaseListener {
         int subscript = currentVariableSubscriptMap.get(tokenText);
         String ssaFormVariable = tokenText + "_" + subscript;
         predicate += ssaFormVariable;
-      } else
-        predicate += tokenText;
+      } else predicate += tokenText;
       predicate += " ";
     }
     predicate = predicate.trim();
@@ -397,7 +459,8 @@ public class Converter extends Java8BaseListener {
   }
 
   public void updateVariableSubscriptPredicateStack() {
-    HashMap<String, Integer> varSubscriptsBeforePredicate = new HashMap<>(currentVariableSubscriptMap);
+    HashMap<String, Integer> varSubscriptsBeforePredicate =
+        new HashMap<>(currentVariableSubscriptMap);
     varSubscriptsBeforePredicateStack.push(varSubscriptsBeforePredicate);
   }
 
@@ -418,8 +481,7 @@ public class Converter extends Java8BaseListener {
   // Checks whether a given context is the descendant of another given context
   public boolean isDescendantOf(ParserRuleContext ctx, Class cls) {
     while (ctx.getParent() != null) {
-      if (cls.isInstance(ctx.getParent()))
-        return true;
+      if (cls.isInstance(ctx.getParent())) return true;
       ctx = ctx.getParent();
     }
     return false;

@@ -1,3 +1,5 @@
+package cwru.selab.cf;
+
 public class PhiWhile<T> {
   boolean predicate;
   boolean evaluatedOnce = false;
@@ -7,8 +9,7 @@ public class PhiWhile<T> {
   }
 
   public T entry(T originalValue, T updatedValue) {
-    if (evaluatedOnce)
-      return updatedValue;
+    if (evaluatedOnce) return updatedValue;
     else {
       evaluatedOnce = true;
       return originalValue;
