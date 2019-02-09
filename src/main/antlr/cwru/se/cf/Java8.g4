@@ -41,6 +41,10 @@
  */
 grammar Java8;
 
+@header {
+    package cwru.selab.cf;
+}
+
 /*
  * Productions from §3 (Lexical Structure)
  */

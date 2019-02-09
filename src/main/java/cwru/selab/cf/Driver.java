@@ -1,14 +1,14 @@
-import java.io.FileInputStream;
-import java.io.IOException;
-import java.io.FileWriter;
-import java.io.BufferedWriter;
+package cwru.selab.cf;
 
+import java.io.BufferedWriter;
+import java.io.FileWriter;
+import java.io.IOException;
 import org.antlr.v4.runtime.*;
 import org.antlr.v4.runtime.tree.*;
 
 public class Driver {
   public static void main(String[] args) throws IOException {
-    // create a CharStream that reads from standard input
+    // create a CharStream that reads from a file at path in the first arg
     CharStream input = CharStreams.fromFileName(args[0]);
 
     // create a lexer that feeds off of the input CharStream
@@ -35,7 +35,8 @@ public class Driver {
     writer.close();
     // for (int i = 0; i < parser.getVocabulary().getMaxTokenType(); i++) {
     //   System.out.println(
-    //       i + " = " + parser.getVocabulary().getDisplayName(i) + ", " + parser.getVocabulary().getLiteralName(i));
+    //       i + " = " + parser.getVocabulary().getDisplayName(i) + ", " +
+    // parser.getVocabulary().getLiteralName(i));
     // }
     System.out.println(rewriter.getText());
     // System.out.println(tree.toStringTree(parser)); // print LISP-style tree
