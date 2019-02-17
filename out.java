@@ -1,25 +1,54 @@
-package cwru.selab.cf;
+public class Sum {
+  public int sum(int a, int b) {
+    
+    
+    c_version = -1;
+    i_version = -1;
 
-public class PhiIf<T> {
-  boolean predicate;
+    a_version = 0;
+    b_version = 0;
 
-  public PhiIf(boolean predicate) {
-    this.predicate_0.predicate = predicate_0;
-  }
+    int c = a
+    record();;
+    a = a * 2;
+    record();
+    b = b - 1;
+    record();
 
-  public boolean getPredVal() {
-    Boolean predicate_0 = null;
-    null this.predicate_0 = null;
+    a = 9;
+    record();
+    b = 2;
+    record();
+    a++;
+    if (b < 5) {
+      a = 4;
+    record();
+      a = a * 2;
+    record();
+    }
+    
 
-    predicate_0 = predicate;
-    return predicate_0;
-  }
+    if (a > 1) {
+      b = 9;
+    record();
+      c = a;
+    record();
+    }
+        
 
-  public T merge(T truePredicateValue, T originalValue) {
-    null truePredicateValue_0 = null;
-    null originalValue_0 = null;
+    while (a < 100) {
+      b = 0;
+    record();
+      a = a + 4;
+    record();
+    }
 
-    predicate_0 = predicate;
-    return predicate ? truePredicateValue_0 : originalValue_0;
+    for (int i = 0
+    record();; i < 10; i++) {
+      System.out.println("Hello");
+    }
+    b = b + 8;
+    record();
+    return a + b;
   }
 }
