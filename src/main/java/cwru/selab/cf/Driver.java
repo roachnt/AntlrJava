@@ -5,6 +5,7 @@ import java.io.FileWriter;
 import java.io.IOException;
 import org.antlr.v4.runtime.*;
 import org.antlr.v4.runtime.tree.*;
+import com.google.googlejavaformat.java.Formatter;
 
 public class Driver {
   public static void main(String[] args) throws IOException {
@@ -29,8 +30,13 @@ public class Driver {
     Converter converter = new Converter(parser, rewriter);
 
     walker.walk(converter, tree);
-
+    String formattedSource = "";
     BufferedWriter writer = new BufferedWriter(new FileWriter("out.java"));
+    try {
+      formattedSource = new Formatter().formatSource(rewriter.getText());
+    } catch (Exception e) {
+      System.out.println(e.getMessage());
+    }
     writer.write(rewriter.getText());
     writer.close();
     // for (int i = 0; i < parser.getVocabulary().getMaxTokenType(); i++) {
@@ -38,7 +44,7 @@ public class Driver {
     //       i + " = " + parser.getVocabulary().getDisplayName(i) + ", " +
     // parser.getVocabulary().getLiteralName(i));
     // }
-    System.out.println(rewriter.getText());
+    System.out.println(formattedSource);
     // System.out.println(tree.toStringTree(parser)); // print LISP-style tree
   }
 }

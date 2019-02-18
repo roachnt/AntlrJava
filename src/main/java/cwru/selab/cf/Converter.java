@@ -72,6 +72,9 @@ public class Converter extends Java8BaseListener {
   // Map base variable name to its type
   HashMap<String, String> variableTypeMap = new HashMap<>();
 
+  int scope = 0;
+
+  String packageName = "";
   String className = "";
   String currentMethodName = "";
 
@@ -79,6 +82,15 @@ public class Converter extends Java8BaseListener {
     this.rewriter = rewriter;
     this.parser = parser;
     this.tokens = parser.getTokenStream();
+  }
+
+  @Override
+  public void enterBlock(Java8Parser.BlockContext ctx) {
+    scope++;
+  }
+
+  public void exitBlock(Java8Parser.BlockContext ctx) {
+    scope--;
   }
 
   // Handling basic assignment statements
@@ -111,10 +123,15 @@ public class Converter extends Java8BaseListener {
       Java8Parser.VariableDeclaratorIdContext varContext = ctx.variableDeclaratorList().variableDeclarator(0)
           .variableDeclaratorId();
       String variable = tokens.getText(varContext);
+      int lineNumber = ctx.getStart().getLine();
+      if (!isDescendantOf(ctx, Java8Parser.ForStatementContext.class)) {
+        insertVersionUpdateAfter(ctx.getParent().getParent().getStop(), variable);
+        insertRecordStatementAfter(ctx.getParent().getStop(), variable, lineNumber);
+      }
       currentVariableSubscriptMap.put(variable, 0);
       variableTypeMap.put(variable, type);
     }
-    rewriter.insertAfter(ctx.getStop(), "\n    record();");
+
   }
 
   // When entering any expression, change the variable to SSA form
@@ -145,20 +162,9 @@ public class Converter extends Java8BaseListener {
       subscript = currentVariableSubscriptMap.get(variable) + 1;
     }
     currentVariableSubscriptMap.put(variable, subscript);
-  }
-
-  @Override
-  public void exitExpressionStatement(Java8Parser.ExpressionStatementContext ctx) {
-    if (ctx.getChildCount() == 0) {
-      return;
-    }
-
-    if (ctx.getChild(0).getChildCount() == 0)
-      return;
-
-    if (ctx.getChild(0).getChild(0) instanceof Java8Parser.AssignmentContext) {
-      rewriter.insertAfter(ctx.getStop(), "\n    record();");
-    }
+    int lineNumber = ctx.getStart().getLine();
+    insertVersionUpdateAfter(ctx.getParent().getParent().getStop(), variable);
+    insertRecordStatementAfter(ctx.getParent().getParent().getStop(), variable, lineNumber);
   }
 
   ArrayList<String> methodParameters = new ArrayList<>();
@@ -186,6 +192,18 @@ public class Converter extends Java8BaseListener {
       initializeFormalParams += "\n    " + entry.getKey() + "_version" + " = 0" + ";";
     }
     initializeFormalParams += "\n";
+  }
+
+  @Override
+  public void enterMethodDeclarator(Java8Parser.MethodDeclaratorContext ctx) {
+    String methodName = ctx.getChild(0).getText();
+    currentMethodName = methodName;
+  }
+
+  @Override
+  public void enterNormalClassDeclaration(Java8Parser.NormalClassDeclarationContext ctx) {
+    String className = ctx.getChild(2).getText();
+    this.className = className;
   }
 
   // When exiting a method, initilize all variables (both from parameters and in body)
@@ -292,6 +310,21 @@ public class Converter extends Java8BaseListener {
 
     // Take care of SSA variables that had to be put off for while loop
 
+  }
+
+  public void insertVersionUpdateAfter(Token token, String variableName) {
+    rewriter.insertAfter(token, variableName + "_version++;");
+  }
+
+  public void insertRecordStatementAfter(Token token, String variableName, int lineNumber) {
+    String variableInQuotes = "\"" + variableName + "\"";
+    String packageNameInQuotes = "\"" + packageName + "\"";
+    String classNameInQuotes = "\"" + className + "\"";
+    String methodNameInQuotes = "\"" + currentMethodName + "\"";
+    String variableVersionCounter = variableName + "_version";
+    rewriter.insertAfter(token,
+        "record(" + packageNameInQuotes + "," + classNameInQuotes + "," + methodNameInQuotes + "," + lineNumber + ","
+            + scope + "," + variableInQuotes + "," + variableName + "," + variableVersionCounter + ");");
   }
 
   public void writeWhileExit(Java8Parser.WhileStatementContext ctx, HashSet<String> whileLoopVariables,
