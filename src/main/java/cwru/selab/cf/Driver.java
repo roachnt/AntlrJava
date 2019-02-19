@@ -35,9 +35,10 @@ public class Driver {
     try {
       formattedSource = new Formatter().formatSource(rewriter.getText());
     } catch (Exception e) {
+      System.out.println(rewriter.getText());
       System.out.println(e.getMessage());
     }
-    writer.write(rewriter.getText());
+    writer.write(formattedSource);
     writer.close();
     // for (int i = 0; i < parser.getVocabulary().getMaxTokenType(); i++) {
     //   System.out.println(

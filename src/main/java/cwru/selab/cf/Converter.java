@@ -105,7 +105,10 @@ public class Converter extends Java8BaseListener {
 
     if (isDescendantOf(ctx, Java8Parser.IfThenStatementContext.class)
         || isDescendantOf(ctx, Java8Parser.WhileStatementContext.class)) {
-      predicateBlockVariablesStack.lastElement().add(variable);
+      for (HashSet<String> predicateBlockVariables : predicateBlockVariablesStack) {
+        predicateBlockVariables.add(variable);
+      }
+
     }
 
     if (isDescendantOf(ctx, Java8Parser.WhileStatementContext.class)) {
@@ -189,9 +192,8 @@ public class Converter extends Java8BaseListener {
       if (!currentVariableSubscriptMap.containsKey(entry.getKey()))
         return;
       int subscript = currentVariableSubscriptMap.get(entry.getKey());
-      initializeFormalParams += "\n    " + entry.getKey() + "_version" + " = 0" + ";";
+      initializeFormalParams += entry.getKey() + "_version" + " = 0" + ";";
     }
-    initializeFormalParams += "\n";
   }
 
   @Override
@@ -209,18 +211,16 @@ public class Converter extends Java8BaseListener {
   // When exiting a method, initilize all variables (both from parameters and in body)
   @Override
   public void exitMethodBody(Java8Parser.MethodBodyContext ctx) {
-    rewriter.insertAfter(ctx.getStart(), "\n");
     for (HashMap.Entry<String, Integer> entry : currentVariableSubscriptMap.entrySet()) {
-      rewriter.insertAfter(ctx.getStart(), "    ");
       String variableName = entry.getKey();
       int currentSubscript = entry.getValue();
       String type = variableTypeMap.get(variableName);
       if (!methodParameters.contains(variableName)) {
         rewriter.insertAfter(ctx.getStart(), variableName + "_version" + " = -1;");
       }
-      rewriter.insertAfter(ctx.getStart(), "\n");
     }
     rewriter.insertAfter(ctx.getStart(), initializeFormalParams);
+    currentMethodName = "";
   }
 
   @Override
@@ -234,6 +234,16 @@ public class Converter extends Java8BaseListener {
     String varName = tokens.getText(ctx.postfixExpression().expressionName());
     int subscript = currentVariableSubscriptMap.get(varName);
     currentVariableSubscriptMap.put(varName, subscript + 1);
+
+    ParserRuleContext currentContext = ctx;
+
+    while (currentContext.getParent() != null) {
+      if (currentContext instanceof Java8Parser.ExpressionStatementContext) {
+        insertRecordStatementAfter(currentContext.getStop(), varName, currentContext.getStart().getLine());
+        break;
+      }
+      currentContext = currentContext.getParent();
+    }
   }
 
   // Replace -- with initialization of a new variable
@@ -262,24 +272,14 @@ public class Converter extends Java8BaseListener {
     // Get the SSA Form predicate to insert into Phi function
     String predicate = extractSSAFormPredicate(ctx.expression(), varSubscriptsBeforePredicate);
 
-    // TODO: Type checking and changes for different data types
-    if (isDescendantOf(ctx, Java8Parser.WhileStatementContext.class)) {
-      deferredPhiIfDeclarations.lastElement().put(phiCounter, ctx);
-    } else {
-      writePhiIfDeclaration(ctx, type, phiCounter, varSubscriptsBeforePredicate);
-    }
-
-    rewriter.insertAfter(ctx.getStop(), "\n");
     for (String var : predicateBlockVariablesStack.pop()) {
-      rewriter.insertAfter(ctx.getStop(), "    ");
       int subscript = currentVariableSubscriptMap.get(var);
-      int prePredicateSubscript = varSubscriptsBeforePredicate.get(var);
-
-      String beforePredicateVariable = var + "_" + prePredicateSubscript;
-      String predicateVariable = var + "_" + subscript;
-
       currentVariableSubscriptMap.put(var, subscript + 1);
+
+      insertVersionUpdateAfter(ctx.getStop(), var);
+      insertRecordStatementAfter(ctx.getStop(), var, ctx.getStop().getLine());
     }
+
   }
 
   @Override
@@ -304,12 +304,8 @@ public class Converter extends Java8BaseListener {
 
     // Get the SSA Form predicate to insert into Phi function
     String predicate = extractSSAFormPredicate(ctx.expression(), varSubscriptsBeforePredicate);
-    String phiObject = "PhiWhile<" + type + "> phi" + phiSubscript + " = new PhiWhile<>(" + predicate + ");";
 
     String updatePredicate = extractSSAFormUpdatePredicate(ctx.expression());
-
-    // Take care of SSA variables that had to be put off for while loop
-
   }
 
   public void insertVersionUpdateAfter(Token token, String variableName) {
