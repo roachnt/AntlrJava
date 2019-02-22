@@ -46,7 +46,12 @@ public class Sum {
     c_version++;
     record("", "Sum", "sum", 18, 1, "c", c, c_version);
 
-    while (a < 100) {
+    while (true) {
+      a_version++;
+      record("", "Sum", "sum", 20, 1, "a", a, a_version);
+      if (!(a < 100)) {
+        break;
+      }
       b = 0;
       b_version++;
       record("", "Sum", "sum", 21, 2, "b", b, b_version);
@@ -54,9 +59,16 @@ public class Sum {
       a_version++;
       record("", "Sum", "sum", 22, 2, "a", a, a_version);
     }
-
-    for (int i = 0; i < 10; i++) {
-      System.out.println("Hello");
+    a_version++;
+    record("", "Sum", "sum", 23, 1, "a", a, a_version);
+    b_version++;
+    record("", "Sum", "sum", 23, 1, "b", b, b_version);
+    int i;
+    {
+      i = 0;
+      for (i = 0; i < 10; i++) {
+        System.out.println("Hello");
+      }
     }
     b = b + 8;
     b_version++;

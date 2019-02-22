@@ -37,6 +37,9 @@ public class Driver {
     } catch (Exception e) {
       System.out.println(rewriter.getText());
       System.out.println(e.getMessage());
+      writer.write(rewriter.getText());
+      writer.close();
+      return;
     }
     writer.write(formattedSource);
     writer.close();
