@@ -63,16 +63,17 @@ public class Sum {
     record("", "Sum", "sum", 23, 1, "a", a, a_version);
     b_version++;
     record("", "Sum", "sum", 23, 1, "b", b, b_version);
-    int i;
     {
-      i = 0;
-      for (i = 0; i < 10; i++) {
+      int i = 0;
+      i_version++;
+      record("", "Sum", "sum", 24, 1, "i", i, i_version);
+      for (int i = 0; i < 10; i++) {
         System.out.println("Hello");
       }
     }
     b = b + 8;
     b_version++;
-    record("", "Sum", "sum", 28, 1, "b", b, b_version);
+    record("", "Sum", "sum", 27, 1, "b", b, b_version);
     return a + b;
   }
 }

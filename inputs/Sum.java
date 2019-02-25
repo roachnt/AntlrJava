@@ -21,8 +21,7 @@ public class Sum {
       b = 0;
       a = a + 4;
     }
-    int i;
-    for (i = 0; i < 10; i++) {
+    for (int i = 0; i < 10; i++) {
       System.out.println("Hello");
     }
     b = b + 8;

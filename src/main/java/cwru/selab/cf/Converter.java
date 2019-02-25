@@ -390,18 +390,18 @@ public class Converter extends Java8BaseListener {
     // }
     rewriter.insertAfter(ctx.getStop(), "}");
 
-    // Get for loop initializer
-    String forInit = "";
-
     if (ctx.forInit() != null) {
-      ArrayList<TerminalNode> forInitTokens = getAllTokensFromContext(ctx.forInit());
-      for (TerminalNode token : forInitTokens) {
-        forInit += token.getText() + " ";
-      }
-      forInit += ";";
       if (ctx.forInit().localVariableDeclaration() != null) {
+        String forInit = "";
+        ArrayList<TerminalNode> forInitTokens = getAllTokensFromContext(ctx.forInit().localVariableDeclaration());
+        for (TerminalNode token : forInitTokens) {
+          String tokenText = token.getText();
+          forInit += tokenText + " ";
+        }
+        forInit += ";";
         for (int i = 0; i < ctx.forInit().localVariableDeclaration().variableDeclaratorList().variableDeclarator()
             .size(); i++) {
+
           Java8Parser.VariableDeclaratorIdContext varContext = ctx.forInit().localVariableDeclaration()
               .variableDeclaratorList().variableDeclarator(i).variableDeclaratorId();
           String variable = tokens.getText(varContext);
@@ -413,13 +413,60 @@ public class Converter extends Java8BaseListener {
             insertVersionUpdateBefore(ctx.getStart(), variable);
           }
         }
+        rewriter.insertBefore(ctx.getStart(), forInit);
       } else if (ctx.forInit().statementExpressionList() != null) {
         // TODO: Write function recording all expressions (assignment, postIncrement, etc.)
-      }
-      rewriter.insertBefore(ctx.getStart(), forInit);
+        for (int i = 0; i < ctx.forInit().statementExpressionList().statementExpression().size(); i++) {
 
-      rewriter.insertBefore(ctx.getStart(), "{");
+          // Get for loop initializer
+          String forInit = "";
+          ArrayList<TerminalNode> forInitTokens = getAllTokensFromContext(
+              ctx.forInit().statementExpressionList().statementExpression(i));
+          for (TerminalNode token : forInitTokens) {
+            String tokenText = token.getText();
+            forInit += tokenText + " ";
+          }
+          forInit += ";";
+          // Expression can only be one of assignment, preIncrementExpression, preDecrementExpression, 
+          // postIncrementExpression, postDecrementExpression, methodInvocation, classInstanceCreationExpression;
+          ParserRuleContext expressionContext = (ParserRuleContext) ctx.forInit().statementExpressionList()
+              .statementExpression(i).getChild(0);
+          // Handle assignment
+          if (expressionContext instanceof Java8Parser.AssignmentContext) {
+            Java8Parser.AssignmentContext assignmentContext = (Java8Parser.AssignmentContext) expressionContext;
+            String variable = assignmentContext.leftHandSide().getText();
+            int lineNumber = assignmentContext.getStart().getLine();
+            insertRecordStatementBefore(ctx.getStart(), variable, lineNumber);
+            insertVersionUpdateBefore(ctx.getStart(), variable);
+          }
+
+          if (expressionContext instanceof Java8Parser.PreIncrementExpressionContext
+              || expressionContext instanceof Java8Parser.PreDecrementExpressionContext) {
+            String variable = expressionContext.getChild(1).getText();
+            int lineNumber = expressionContext.getStart().getLine();
+            insertRecordStatementBefore(ctx.getStart(), variable, lineNumber);
+            insertVersionUpdateBefore(ctx.getStart(), variable);
+          }
+
+          if (expressionContext instanceof Java8Parser.PostIncrementExpressionContext
+              || expressionContext instanceof Java8Parser.PostDecrementExpressionContext) {
+            if (expressionContext.getChild(0).getChild(0) instanceof Java8Parser.ExpressionNameContext) {
+              String variable = expressionContext.getChild(0).getChild(0).getText();
+              int lineNumber = expressionContext.getStart().getLine();
+              insertRecordStatementBefore(ctx.getStart(), variable, lineNumber);
+              insertVersionUpdateBefore(ctx.getStart(), variable);
+            }
+          }
+          rewriter.insertBefore(ctx.getStart(), forInit);
+
+        }
+      }
+      if (ctx.expression() != null) {
+        System.out.println(ctx.expression().getText());
+      }
     }
+
+    rewriter.insertBefore(ctx.getStart(), "{");
   }
 
   public void insertVersionUpdateAfter(Token token, String variableName) {
