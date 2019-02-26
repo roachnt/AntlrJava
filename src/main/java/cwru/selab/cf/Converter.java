@@ -174,6 +174,12 @@ public class Converter extends Java8BaseListener {
       insertVersionUpdateAfter(ctx.getParent().getParent().getStop(), variable);
       insertRecordStatementAfter(ctx.getParent().getParent().getStop(), variable, lineNumber);
     }
+
+    HashSet<String> postFixAlteredVariables = getIncrementAndDecrementVariablesFromAssignment(ctx);
+    for (String alteredVariable : postFixAlteredVariables) {
+      insertVersionUpdateAfter(ctx.getParent().getParent().getStop(), alteredVariable);
+      insertRecordStatementAfter(ctx.getParent().getParent().getStop(), alteredVariable, lineNumber);
+    }
   }
 
   ArrayList<String> methodParameters = new ArrayList<>();
@@ -462,8 +468,41 @@ public class Converter extends Java8BaseListener {
         }
       }
       if (ctx.expression() != null) {
-        System.out.println(ctx.expression().getText());
+        Token endParenthesis = null;
+        for (int i = 0; i < ctx.getChildCount(); i++) {
+          if (ctx.getChild(i).getText().equals(")")) {
+            TerminalNode node = (TerminalNode) ctx.getChild(i);
+            endParenthesis = node.getSymbol();
+          }
+        }
+        if (endParenthesis != null) {
+          rewriter.replace(ctx.getStart(), endParenthesis, "while (true)");
+        }
+        ArrayList<String> expressionNamesList = getAllExpressionNamesFromPredicate(ctx.expression());
+        Java8Parser.BlockContext blockContext = ctx.statement().statementWithoutTrailingSubstatement().block();
+
+        if (blockContext != null) {
+          for (String variable : expressionNamesList) {
+            insertVersionUpdateAfter(ctx.statement().getStart(), variable);
+            insertRecordStatementAfter(ctx.statement().getStart(), variable, ctx.expression().getStart().getLine());
+          }
+          rewriter.insertBefore(ctx.statement().getStart(), "if (!(" + ctx.expression().getText() + ")) {break;}");
+        } else {
+          rewriter.insertBefore(ctx.statement().getStart(), "if (!(" + ctx.expression().getText() + ")) {break;}");
+          for (String variable : expressionNamesList) {
+            insertRecordStatementBefore(ctx.statement().getStart(), variable, ctx.expression().getStart().getLine());
+            insertVersionUpdateBefore(ctx.statement().getStart(), variable);
+          }
+          rewriter.insertBefore(ctx.statement().getStart(), "{");
+          rewriter.insertAfter(ctx.statement().getStop(), "}");
+        }
       }
+    }
+    // Handle forUpdate
+    // assignment, preIncrementExpression, preDecrementExpression, postIncrementExpression, postDecrementExpression
+
+    if (ctx.forUpdate() != null) {
+
     }
 
     rewriter.insertBefore(ctx.getStart(), "{");
@@ -639,6 +678,44 @@ public class Converter extends Java8BaseListener {
     }
 
     return terminalNodes;
+  }
+
+  public HashSet<String> getIncrementAndDecrementVariablesFromAssignment(ParserRuleContext ctx) {
+    HashSet<String> variables = new HashSet<>();
+
+    for (int i = 0; i < ctx.getChildCount(); i++) {
+      if (ctx.getChild(i) instanceof Java8Parser.PostIncrementExpression_lf_postfixExpressionContext) {
+        // Get post increment variables
+        Java8Parser.PostIncrementExpression_lf_postfixExpressionContext postfixExprCtx = (Java8Parser.PostIncrementExpression_lf_postfixExpressionContext) ctx
+            .getChild(i);
+        Java8Parser.PostfixExpressionContext parent = (Java8Parser.PostfixExpressionContext) postfixExprCtx.getParent();
+        if (parent.expressionName() != null) {
+          variables.add(parent.expressionName().getText());
+        }
+
+      } else if (ctx.getChild(i) instanceof Java8Parser.PostDecrementExpression_lf_postfixExpressionContext) {
+        // Get post decrement variables
+        Java8Parser.PostDecrementExpression_lf_postfixExpressionContext postfixExprCtx = (Java8Parser.PostDecrementExpression_lf_postfixExpressionContext) ctx
+            .getChild(i);
+        Java8Parser.PostfixExpressionContext parent = (Java8Parser.PostfixExpressionContext) postfixExprCtx.getParent();
+        if (parent.expressionName() != null) {
+          variables.add(parent.expressionName().getText());
+        }
+
+      } else if (ctx.getChild(i) instanceof Java8Parser.PreIncrementExpressionContext) {
+        Java8Parser.PreIncrementExpressionContext expr = (Java8Parser.PreIncrementExpressionContext) ctx.getChild(i);
+        variables.add(expr.unaryExpression().getText());
+
+      } else if (ctx.getChild(i) instanceof Java8Parser.PreDecrementExpressionContext) {
+        Java8Parser.PreDecrementExpressionContext expr = (Java8Parser.PreDecrementExpressionContext) ctx.getChild(i);
+        variables.add(expr.unaryExpression().getText());
+      }
+
+      else if (ctx.getChild(i) instanceof ParserRuleContext) {
+        variables.addAll(getIncrementAndDecrementVariablesFromAssignment((ParserRuleContext) ctx.getChild(i)));
+      }
+    }
+    return variables;
   }
 
   // Checks whether a given context is the descendant of another given context
