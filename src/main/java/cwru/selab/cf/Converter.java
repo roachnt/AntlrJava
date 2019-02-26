@@ -394,7 +394,6 @@ public class Converter extends Java8BaseListener {
     //     System.out.println(method);
     //   }
     // }
-    rewriter.insertAfter(ctx.getStop(), "}");
 
     if (ctx.forInit() != null) {
       if (ctx.forInit().localVariableDeclaration() != null) {
@@ -421,7 +420,7 @@ public class Converter extends Java8BaseListener {
         }
         rewriter.insertBefore(ctx.getStart(), forInit);
       } else if (ctx.forInit().statementExpressionList() != null) {
-        // TODO: Write function recording all expressions (assignment, postIncrement, etc.)
+
         for (int i = 0; i < ctx.forInit().statementExpressionList().statementExpression().size(); i++) {
 
           // Get for loop initializer
@@ -467,6 +466,59 @@ public class Converter extends Java8BaseListener {
 
         }
       }
+
+      // Handle forUpdate
+      // assignment, preIncrementExpression, preDecrementExpression, postIncrementExpression, postDecrementExpression
+      if (ctx.forUpdate() != null) {
+        for (int i = 0; i < ctx.forUpdate().statementExpressionList().statementExpression().size(); i++) {
+          ParserRuleContext expressionContext = (ParserRuleContext) ctx.forUpdate().statementExpressionList()
+              .statementExpression(i).getChild(0);
+          // Handle assignment
+          if (expressionContext instanceof Java8Parser.AssignmentContext) {
+            Java8Parser.AssignmentContext assignmentContext = (Java8Parser.AssignmentContext) expressionContext;
+            String variable = assignmentContext.leftHandSide().getText();
+            int lineNumber = assignmentContext.getStart().getLine();
+            rewriter.insertAfter(ctx.getStop(), assignmentContext.getText() + ";");
+            insertVersionUpdateAfter(ctx.getStop(), variable);
+            insertRecordStatementAfter(ctx.getStop(), variable, lineNumber);
+          }
+
+          if (expressionContext instanceof Java8Parser.PreIncrementExpressionContext
+              || expressionContext instanceof Java8Parser.PreDecrementExpressionContext) {
+            String variable = expressionContext.getChild(1).getText();
+            int lineNumber = expressionContext.getStart().getLine();
+
+            if (ctx.statement().statementWithoutTrailingSubstatement().block() == null) {
+              insertVersionUpdateBefore(ctx.statement().getStart(), variable);
+              insertRecordStatementBefore(ctx.statement().getStart(), variable, lineNumber);
+              rewriter.insertBefore(ctx.statement().getStart(), expressionContext.getText() + ";");
+            } else {
+              rewriter.insertAfter(ctx.statement().getStart(), expressionContext.getText() + ";");
+              insertVersionUpdateAfter(ctx.statement().getStart(), variable);
+              insertRecordStatementAfter(ctx.statement().getStart(), variable, lineNumber);
+            }
+          }
+
+          if (expressionContext instanceof Java8Parser.PostIncrementExpressionContext
+              || expressionContext instanceof Java8Parser.PostDecrementExpressionContext) {
+            if (expressionContext.getChild(0).getChild(0) instanceof Java8Parser.ExpressionNameContext) {
+              String variable = expressionContext.getChild(0).getChild(0).getText();
+              int lineNumber = expressionContext.getStart().getLine();
+              if (ctx.statement().statementWithoutTrailingSubstatement().block() == null) {
+                rewriter.insertAfter(ctx.statement().getStop(), expressionContext.getText() + ";");
+                insertVersionUpdateAfter(ctx.statement().getStop(), variable);
+                insertRecordStatementAfter(ctx.statement().getStop(), variable, lineNumber);
+              } else {
+                insertVersionUpdateBefore(ctx.statement().getStop(), variable);
+                insertRecordStatementBefore(ctx.statement().getStop(), variable, lineNumber);
+                rewriter.insertBefore(ctx.statement().getStop(), expressionContext.getText() + ";");
+              }
+            }
+          }
+        }
+
+      }
+
       if (ctx.expression() != null) {
         Token endParenthesis = null;
         for (int i = 0; i < ctx.getChildCount(); i++) {
@@ -486,26 +538,24 @@ public class Converter extends Java8BaseListener {
             insertVersionUpdateAfter(ctx.statement().getStart(), variable);
             insertRecordStatementAfter(ctx.statement().getStart(), variable, ctx.expression().getStart().getLine());
           }
-          rewriter.insertBefore(ctx.statement().getStart(), "if (!(" + ctx.expression().getText() + ")) {break;}");
         } else {
           rewriter.insertBefore(ctx.statement().getStart(), "if (!(" + ctx.expression().getText() + ")) {break;}");
           for (String variable : expressionNamesList) {
             insertRecordStatementBefore(ctx.statement().getStart(), variable, ctx.expression().getStart().getLine());
             insertVersionUpdateBefore(ctx.statement().getStart(), variable);
           }
-          rewriter.insertBefore(ctx.statement().getStart(), "{");
-          rewriter.insertAfter(ctx.statement().getStop(), "}");
         }
       }
     }
-    // Handle forUpdate
-    // assignment, preIncrementExpression, preDecrementExpression, postIncrementExpression, postDecrementExpression
 
-    if (ctx.forUpdate() != null) {
-
+    if (ctx.statement().statementWithoutTrailingSubstatement().block() == null) {
+      rewriter.insertBefore(ctx.statement().getStart(), "{");
+      rewriter.insertAfter(ctx.statement().getStop(), "}");
+    } else {
+      rewriter.insertAfter(ctx.statement().getStart(), "if (!(" + ctx.expression().getText() + ")) {break;}");
     }
-
     rewriter.insertBefore(ctx.getStart(), "{");
+    rewriter.insertAfter(ctx.getStop(), "}");
   }
 
   public void insertVersionUpdateAfter(Token token, String variableName) {

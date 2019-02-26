@@ -76,6 +76,9 @@ public class Sum {
           break;
         }
         System.out.println("Hello");
+        i++;
+        i_version++;
+        record("", "Sum", "sum", 24, 1, "i", i, i_version);
       }
     }
 
