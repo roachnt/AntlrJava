@@ -388,12 +388,6 @@ public class Converter extends Java8BaseListener {
 
   @Override
   public void exitBasicForStatement(Java8Parser.BasicForStatementContext ctx) {
-    // for (Method method : Java8Parser.BasicForStatementContext.class.getDeclaredMethods()) {
-    //   int modifiers = method.getModifiers();
-    //   if (Modifier.isPublic(modifiers) || Modifier.isProtected(modifiers)) {
-    //     System.out.println(method);
-    //   }
-    // }
 
     if (ctx.forInit() != null) {
       if (ctx.forInit().localVariableDeclaration() != null) {
