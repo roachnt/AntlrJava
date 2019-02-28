@@ -21,10 +21,14 @@ public class Sum {
       b = 0 + c++ + ++c + c-- + --c;
       a = a + 4;
     }
-    for (int i = 0; i < 10; i++)
-      if (a < 5) {
+    int i;
+    if (a < 5)
+      for (i = a--; i < 10; i = a++) {
         System.out.println("Hello");
       }
+    else {
+      System.out.println("Goodbye");
+    }
 
     b = b + 8;
     return a + b;

@@ -75,6 +75,11 @@ public class Converter extends Java8BaseListener {
   // Map base variable name to its type
   HashMap<String, String> variableTypeMap = new HashMap<>();
 
+  // Keep track of variables in scope
+  Stack<HashMap<String, Integer>> variablesInScope = new Stack<>();
+
+  HashSet<String> allLocalVariables = new HashSet<>();
+
   int scope = 0;
 
   String packageName = "";
@@ -90,10 +95,21 @@ public class Converter extends Java8BaseListener {
   @Override
   public void enterBlock(Java8Parser.BlockContext ctx) {
     scope++;
+    if (!variablesInScope.empty())
+      variablesInScope.push(new HashMap<String, Integer>(variablesInScope.lastElement()));
+    else {
+      HashMap<String, Integer> firstBlockScope = new HashMap<String, Integer>();
+      for (String param : methodParameters) {
+        firstBlockScope.put(param, 0);
+
+      }
+      variablesInScope.push(firstBlockScope);
+    }
   }
 
   public void exitBlock(Java8Parser.BlockContext ctx) {
     scope--;
+    variablesInScope.pop();
   }
 
   // Handling basic assignment statements
@@ -124,10 +140,12 @@ public class Converter extends Java8BaseListener {
   public void enterLocalVariableDeclaration(Java8Parser.LocalVariableDeclarationContext ctx) {
     String type = tokens.getText(ctx.unannType());
     for (int i = 0; i < ctx.variableDeclaratorList().variableDeclarator().size(); i++) {
-      int subscript = 0;
       Java8Parser.VariableDeclaratorIdContext varContext = ctx.variableDeclaratorList().variableDeclarator(i)
           .variableDeclaratorId();
       String variable = tokens.getText(varContext);
+
+      variablesInScope.lastElement().put(variable, -1);
+
       int lineNumber = ctx.getStart().getLine();
       if (!isDescendantOf(ctx, Java8Parser.ForInitContext.class)
           && ctx.variableDeclaratorList().variableDeclarator(i).variableInitializer() != null) {
@@ -135,7 +153,8 @@ public class Converter extends Java8BaseListener {
         insertVersionUpdateAfter(ctx.getParent().getParent().getStop(), variable);
         insertRecordStatementAfter(ctx.getParent().getStop(), variable, lineNumber);
       }
-      variableTypeMap.put(variable, type);
+      if (!isDescendantOf(ctx, Java8Parser.ForInitContext.class))
+        allLocalVariables.add(variable);
     }
 
   }
@@ -204,7 +223,7 @@ public class Converter extends Java8BaseListener {
       if (!currentVariableSubscriptMap.containsKey(entry.getKey()))
         return;
       int subscript = currentVariableSubscriptMap.get(entry.getKey());
-      initializeFormalParams += entry.getKey() + "_version" + " = 0" + ";";
+      initializeFormalParams += "int " + entry.getKey() + "_version" + " = 0" + ";";
     }
   }
 
@@ -223,12 +242,9 @@ public class Converter extends Java8BaseListener {
   // When exiting a method, initilize all variables (both from parameters and in body)
   @Override
   public void exitMethodBody(Java8Parser.MethodBodyContext ctx) {
-    for (HashMap.Entry<String, Integer> entry : currentVariableSubscriptMap.entrySet()) {
-      String variableName = entry.getKey();
-      int currentSubscript = entry.getValue();
-      String type = variableTypeMap.get(variableName);
-      if (!methodParameters.contains(variableName)) {
-        rewriter.insertAfter(ctx.getStart(), variableName + "_version" + " = -1;");
+    for (String variable : allLocalVariables) {
+      if (!methodParameters.contains(variable)) {
+        rewriter.insertAfter(ctx.getStart(), "int " + variable + "_version" + " = -1;");
       }
     }
     rewriter.insertAfter(ctx.getStart(), initializeFormalParams);
@@ -253,6 +269,7 @@ public class Converter extends Java8BaseListener {
 
     while (currentContext.getParent() != null) {
       if (currentContext instanceof Java8Parser.ExpressionStatementContext) {
+        insertVersionUpdateAfter(currentContext.getStop(), varName);
         insertRecordStatementAfter(currentContext.getStop(), varName, currentContext.getStart().getLine());
         break;
       }
@@ -266,6 +283,17 @@ public class Converter extends Java8BaseListener {
     String varName = tokens.getText(ctx.postfixExpression().expressionName());
     int subscript = currentVariableSubscriptMap.get(varName);
     currentVariableSubscriptMap.put(varName, subscript + 1);
+
+    ParserRuleContext currentContext = ctx;
+
+    while (currentContext.getParent() != null) {
+      if (currentContext instanceof Java8Parser.ExpressionStatementContext) {
+        insertVersionUpdateAfter(currentContext.getStop(), varName);
+        insertRecordStatementAfter(currentContext.getStop(), varName, currentContext.getStart().getLine());
+        break;
+      }
+      currentContext = currentContext.getParent();
+    }
   }
 
   @Override
@@ -390,156 +418,15 @@ public class Converter extends Java8BaseListener {
   public void exitBasicForStatement(Java8Parser.BasicForStatementContext ctx) {
 
     if (ctx.forInit() != null) {
-      if (ctx.forInit().localVariableDeclaration() != null) {
-        String forInit = "";
-        ArrayList<TerminalNode> forInitTokens = getAllTokensFromContext(ctx.forInit().localVariableDeclaration());
-        for (TerminalNode token : forInitTokens) {
-          String tokenText = token.getText();
-          forInit += tokenText + " ";
-        }
-        forInit += ";";
-        for (int i = 0; i < ctx.forInit().localVariableDeclaration().variableDeclaratorList().variableDeclarator()
-            .size(); i++) {
+      handleBasicForInit(ctx.forInit(), ctx);
+    }
 
-          Java8Parser.VariableDeclaratorIdContext varContext = ctx.forInit().localVariableDeclaration()
-              .variableDeclaratorList().variableDeclarator(i).variableDeclaratorId();
-          String variable = tokens.getText(varContext);
-          int lineNumber = ctx.getStart().getLine();
-          if (ctx.forInit().localVariableDeclaration().variableDeclaratorList().variableDeclarator(i)
-              .variableInitializer() != null) {
-            currentVariableSubscriptMap.put(variable, 0);
-            insertRecordStatementBefore(ctx.getStart(), variable, lineNumber);
-            insertVersionUpdateBefore(ctx.getStart(), variable);
-          }
-        }
-        rewriter.insertBefore(ctx.getStart(), forInit);
-      } else if (ctx.forInit().statementExpressionList() != null) {
+    if (ctx.forUpdate() != null) {
+      handleBasicForUpdate(ctx);
+    }
 
-        for (int i = 0; i < ctx.forInit().statementExpressionList().statementExpression().size(); i++) {
-
-          // Get for loop initializer
-          String forInit = "";
-          ArrayList<TerminalNode> forInitTokens = getAllTokensFromContext(
-              ctx.forInit().statementExpressionList().statementExpression(i));
-          for (TerminalNode token : forInitTokens) {
-            String tokenText = token.getText();
-            forInit += tokenText + " ";
-          }
-          forInit += ";";
-          // Expression can only be one of assignment, preIncrementExpression, preDecrementExpression, 
-          // postIncrementExpression, postDecrementExpression, methodInvocation, classInstanceCreationExpression;
-          ParserRuleContext expressionContext = (ParserRuleContext) ctx.forInit().statementExpressionList()
-              .statementExpression(i).getChild(0);
-          // Handle assignment
-          if (expressionContext instanceof Java8Parser.AssignmentContext) {
-            Java8Parser.AssignmentContext assignmentContext = (Java8Parser.AssignmentContext) expressionContext;
-            String variable = assignmentContext.leftHandSide().getText();
-            int lineNumber = assignmentContext.getStart().getLine();
-            insertRecordStatementBefore(ctx.getStart(), variable, lineNumber);
-            insertVersionUpdateBefore(ctx.getStart(), variable);
-          }
-
-          if (expressionContext instanceof Java8Parser.PreIncrementExpressionContext
-              || expressionContext instanceof Java8Parser.PreDecrementExpressionContext) {
-            String variable = expressionContext.getChild(1).getText();
-            int lineNumber = expressionContext.getStart().getLine();
-            insertRecordStatementBefore(ctx.getStart(), variable, lineNumber);
-            insertVersionUpdateBefore(ctx.getStart(), variable);
-          }
-
-          if (expressionContext instanceof Java8Parser.PostIncrementExpressionContext
-              || expressionContext instanceof Java8Parser.PostDecrementExpressionContext) {
-            if (expressionContext.getChild(0).getChild(0) instanceof Java8Parser.ExpressionNameContext) {
-              String variable = expressionContext.getChild(0).getChild(0).getText();
-              int lineNumber = expressionContext.getStart().getLine();
-              insertRecordStatementBefore(ctx.getStart(), variable, lineNumber);
-              insertVersionUpdateBefore(ctx.getStart(), variable);
-            }
-          }
-          rewriter.insertBefore(ctx.getStart(), forInit);
-
-        }
-      }
-
-      // Handle forUpdate
-      // assignment, preIncrementExpression, preDecrementExpression, postIncrementExpression, postDecrementExpression
-      if (ctx.forUpdate() != null) {
-        for (int i = 0; i < ctx.forUpdate().statementExpressionList().statementExpression().size(); i++) {
-          ParserRuleContext expressionContext = (ParserRuleContext) ctx.forUpdate().statementExpressionList()
-              .statementExpression(i).getChild(0);
-          // Handle assignment
-          if (expressionContext instanceof Java8Parser.AssignmentContext) {
-            Java8Parser.AssignmentContext assignmentContext = (Java8Parser.AssignmentContext) expressionContext;
-            String variable = assignmentContext.leftHandSide().getText();
-            int lineNumber = assignmentContext.getStart().getLine();
-            rewriter.insertAfter(ctx.getStop(), assignmentContext.getText() + ";");
-            insertVersionUpdateAfter(ctx.getStop(), variable);
-            insertRecordStatementAfter(ctx.getStop(), variable, lineNumber);
-          }
-
-          if (expressionContext instanceof Java8Parser.PreIncrementExpressionContext
-              || expressionContext instanceof Java8Parser.PreDecrementExpressionContext) {
-            String variable = expressionContext.getChild(1).getText();
-            int lineNumber = expressionContext.getStart().getLine();
-
-            if (ctx.statement().statementWithoutTrailingSubstatement().block() == null) {
-              insertVersionUpdateBefore(ctx.statement().getStart(), variable);
-              insertRecordStatementBefore(ctx.statement().getStart(), variable, lineNumber);
-              rewriter.insertBefore(ctx.statement().getStart(), expressionContext.getText() + ";");
-            } else {
-              rewriter.insertAfter(ctx.statement().getStart(), expressionContext.getText() + ";");
-              insertVersionUpdateAfter(ctx.statement().getStart(), variable);
-              insertRecordStatementAfter(ctx.statement().getStart(), variable, lineNumber);
-            }
-          }
-
-          if (expressionContext instanceof Java8Parser.PostIncrementExpressionContext
-              || expressionContext instanceof Java8Parser.PostDecrementExpressionContext) {
-            if (expressionContext.getChild(0).getChild(0) instanceof Java8Parser.ExpressionNameContext) {
-              String variable = expressionContext.getChild(0).getChild(0).getText();
-              int lineNumber = expressionContext.getStart().getLine();
-              if (ctx.statement().statementWithoutTrailingSubstatement().block() == null) {
-                rewriter.insertAfter(ctx.statement().getStop(), expressionContext.getText() + ";");
-                insertVersionUpdateAfter(ctx.statement().getStop(), variable);
-                insertRecordStatementAfter(ctx.statement().getStop(), variable, lineNumber);
-              } else {
-                insertVersionUpdateBefore(ctx.statement().getStop(), variable);
-                insertRecordStatementBefore(ctx.statement().getStop(), variable, lineNumber);
-                rewriter.insertBefore(ctx.statement().getStop(), expressionContext.getText() + ";");
-              }
-            }
-          }
-        }
-
-      }
-
-      if (ctx.expression() != null) {
-        Token endParenthesis = null;
-        for (int i = 0; i < ctx.getChildCount(); i++) {
-          if (ctx.getChild(i).getText().equals(")")) {
-            TerminalNode node = (TerminalNode) ctx.getChild(i);
-            endParenthesis = node.getSymbol();
-          }
-        }
-        if (endParenthesis != null) {
-          rewriter.replace(ctx.getStart(), endParenthesis, "while (true)");
-        }
-        ArrayList<String> expressionNamesList = getAllExpressionNamesFromPredicate(ctx.expression());
-        Java8Parser.BlockContext blockContext = ctx.statement().statementWithoutTrailingSubstatement().block();
-
-        if (blockContext != null) {
-          for (String variable : expressionNamesList) {
-            insertVersionUpdateAfter(ctx.statement().getStart(), variable);
-            insertRecordStatementAfter(ctx.statement().getStart(), variable, ctx.expression().getStart().getLine());
-          }
-        } else {
-          rewriter.insertBefore(ctx.statement().getStart(), "if (!(" + ctx.expression().getText() + ")) {break;}");
-          for (String variable : expressionNamesList) {
-            insertRecordStatementBefore(ctx.statement().getStart(), variable, ctx.expression().getStart().getLine());
-            insertVersionUpdateBefore(ctx.statement().getStart(), variable);
-          }
-        }
-      }
+    if (ctx.expression() != null) {
+      handleBasicForExpression(ctx);
     }
 
     if (ctx.statement().statementWithoutTrailingSubstatement().block() == null) {
@@ -552,12 +439,290 @@ public class Converter extends Java8BaseListener {
     rewriter.insertAfter(ctx.getStop(), "}");
   }
 
+  public void exitBasicForStatementNoShortIf(Java8Parser.BasicForStatementNoShortIfContext ctx) {
+
+    if (ctx.forInit() != null) {
+      handleBasicForInit(ctx.forInit(), ctx);
+    }
+
+    if (ctx.forUpdate() != null) {
+      handleBasicForNoShortIfUpdate(ctx);
+    }
+
+    if (ctx.expression() != null) {
+      handleBasicForNoShortIfExpression(ctx);
+    }
+
+    if (ctx.statementNoShortIf().statementWithoutTrailingSubstatement().block() == null) {
+      rewriter.insertBefore(ctx.statementNoShortIf().getStart(), "{");
+      rewriter.insertAfter(ctx.statementNoShortIf().getStop(), "}");
+    } else {
+      rewriter.insertAfter(ctx.statementNoShortIf().getStart(), "if (!(" + ctx.expression().getText() + ")) {break;}");
+    }
+    rewriter.insertBefore(ctx.getStart(), "{");
+    rewriter.insertAfter(ctx.getStop(), "}");
+  }
+
+  public void handleBasicForInit(Java8Parser.ForInitContext ctx, ParserRuleContext forCtx) {
+    if (ctx.localVariableDeclaration() != null) {
+      String forInit = "";
+      ArrayList<TerminalNode> forInitTokens = getAllTokensFromContext(ctx.localVariableDeclaration());
+      for (TerminalNode token : forInitTokens) {
+        String tokenText = token.getText();
+        forInit += tokenText + " ";
+      }
+      forInit += ";";
+      for (int i = 0; i < ctx.localVariableDeclaration().variableDeclaratorList().variableDeclarator().size(); i++) {
+        Java8Parser.VariableDeclaratorIdContext varContext = ctx.localVariableDeclaration().variableDeclaratorList()
+            .variableDeclarator(i).variableDeclaratorId();
+        String variable = tokens.getText(varContext);
+        int lineNumber = forCtx.getStart().getLine();
+        if (ctx.localVariableDeclaration().variableDeclaratorList().variableDeclarator(i)
+            .variableInitializer() != null) {
+          currentVariableSubscriptMap.put(variable, 0);
+          insertRecordStatementBefore(forCtx.getStart(), variable, lineNumber);
+          insertVersionUpdateBefore(forCtx.getStart(), variable);
+        }
+      }
+      rewriter.insertBefore(forCtx.getStart(), forInit);
+    } else if (ctx.statementExpressionList() != null) {
+
+      for (int i = 0; i < ctx.statementExpressionList().statementExpression().size(); i++) {
+
+        // Get for loop initializer
+        String forInit = "";
+        ArrayList<TerminalNode> forInitTokens = getAllTokensFromContext(
+            ctx.statementExpressionList().statementExpression(i));
+        for (TerminalNode token : forInitTokens) {
+          String tokenText = token.getText();
+          forInit += tokenText + " ";
+        }
+        forInit += ";";
+        // Expression can only be one of assignment, preIncrementExpression, preDecrementExpression, 
+        // postIncrementExpression, postDecrementExpression, methodInvocation, classInstanceCreationExpression;
+        ParserRuleContext expressionContext = (ParserRuleContext) ctx.statementExpressionList().statementExpression(i)
+            .getChild(0);
+        // Handle assignment
+        if (expressionContext instanceof Java8Parser.AssignmentContext) {
+          Java8Parser.AssignmentContext assignmentContext = (Java8Parser.AssignmentContext) expressionContext;
+          String variable = assignmentContext.leftHandSide().getText();
+          int lineNumber = assignmentContext.getStart().getLine();
+          HashSet<String> postFixAlteredVariables = getIncrementAndDecrementVariablesFromAssignment(assignmentContext);
+          for (String alteredVariable : postFixAlteredVariables) {
+            insertRecordStatementBefore(forCtx.getStart(), alteredVariable, lineNumber);
+            insertVersionUpdateBefore(forCtx.getStart(), alteredVariable);
+          }
+          insertRecordStatementBefore(forCtx.getStart(), variable, lineNumber);
+          insertVersionUpdateBefore(forCtx.getStart(), variable);
+        }
+
+        if (expressionContext instanceof Java8Parser.PreIncrementExpressionContext
+            || expressionContext instanceof Java8Parser.PreDecrementExpressionContext) {
+          String variable = expressionContext.getChild(1).getText();
+          int lineNumber = expressionContext.getStart().getLine();
+          insertRecordStatementBefore(forCtx.getStart(), variable, lineNumber);
+          insertVersionUpdateBefore(forCtx.getStart(), variable);
+        }
+
+        if (expressionContext instanceof Java8Parser.PostIncrementExpressionContext
+            || expressionContext instanceof Java8Parser.PostDecrementExpressionContext) {
+          if (expressionContext.getChild(0).getChild(0) instanceof Java8Parser.ExpressionNameContext) {
+            String variable = expressionContext.getChild(0).getChild(0).getText();
+            int lineNumber = expressionContext.getStart().getLine();
+            insertRecordStatementBefore(forCtx.getStart(), variable, lineNumber);
+            insertVersionUpdateBefore(forCtx.getStart(), variable);
+          }
+        }
+        rewriter.insertBefore(forCtx.getStart(), forInit);
+
+      }
+    }
+  }
+
+  public void handleBasicForUpdate(Java8Parser.BasicForStatementContext ctx) {
+    for (int i = 0; i < ctx.forUpdate().statementExpressionList().statementExpression().size(); i++) {
+      ParserRuleContext expressionContext = (ParserRuleContext) ctx.forUpdate().statementExpressionList()
+          .statementExpression(i).getChild(0);
+      // Handle assignment
+      if (expressionContext instanceof Java8Parser.AssignmentContext) {
+        Java8Parser.AssignmentContext assignmentContext = (Java8Parser.AssignmentContext) expressionContext;
+        String variable = assignmentContext.leftHandSide().getText();
+        int lineNumber = assignmentContext.getStart().getLine();
+        rewriter.insertAfter(ctx.getStop(), assignmentContext.getText() + ";");
+        insertVersionUpdateAfter(ctx.getStop(), variable);
+        insertRecordStatementAfter(ctx.getStop(), variable, lineNumber);
+        HashSet<String> postFixAlteredVariables = getIncrementAndDecrementVariablesFromAssignment(assignmentContext);
+        for (String alteredVariable : postFixAlteredVariables) {
+          insertVersionUpdateAfter(ctx.getStop(), alteredVariable);
+          insertRecordStatementAfter(ctx.getStop(), alteredVariable, lineNumber);
+        }
+      }
+
+      if (expressionContext instanceof Java8Parser.PreIncrementExpressionContext
+          || expressionContext instanceof Java8Parser.PreDecrementExpressionContext) {
+        String variable = expressionContext.getChild(1).getText();
+        int lineNumber = expressionContext.getStart().getLine();
+
+        if (ctx.statement().statementWithoutTrailingSubstatement().block() == null) {
+          insertVersionUpdateBefore(ctx.statement().getStart(), variable);
+          insertRecordStatementBefore(ctx.statement().getStart(), variable, lineNumber);
+          rewriter.insertBefore(ctx.statement().getStart(), expressionContext.getText() + ";");
+        } else {
+          rewriter.insertAfter(ctx.statement().getStart(), expressionContext.getText() + ";");
+          insertVersionUpdateAfter(ctx.statement().getStart(), variable);
+          insertRecordStatementAfter(ctx.statement().getStart(), variable, lineNumber);
+        }
+      }
+
+      if (expressionContext instanceof Java8Parser.PostIncrementExpressionContext
+          || expressionContext instanceof Java8Parser.PostDecrementExpressionContext) {
+        if (expressionContext.getChild(0).getChild(0) instanceof Java8Parser.ExpressionNameContext) {
+          String variable = expressionContext.getChild(0).getChild(0).getText();
+          int lineNumber = expressionContext.getStart().getLine();
+          if (ctx.statement().statementWithoutTrailingSubstatement().block() == null) {
+            rewriter.insertAfter(ctx.statement().getStop(), expressionContext.getText() + ";");
+            insertVersionUpdateAfter(ctx.statement().getStop(), variable);
+            insertRecordStatementAfter(ctx.statement().getStop(), variable, lineNumber);
+          } else {
+            insertVersionUpdateBefore(ctx.statement().getStop(), variable);
+            insertRecordStatementBefore(ctx.statement().getStop(), variable, lineNumber);
+            rewriter.insertBefore(ctx.statement().getStop(), expressionContext.getText() + ";");
+          }
+        }
+      }
+    }
+  }
+
+  public void handleBasicForNoShortIfUpdate(Java8Parser.BasicForStatementNoShortIfContext ctx) {
+    for (int i = 0; i < ctx.forUpdate().statementExpressionList().statementExpression().size(); i++) {
+      ParserRuleContext expressionContext = (ParserRuleContext) ctx.forUpdate().statementExpressionList()
+          .statementExpression(i).getChild(0);
+      // Handle assignment
+      if (expressionContext instanceof Java8Parser.AssignmentContext) {
+        Java8Parser.AssignmentContext assignmentContext = (Java8Parser.AssignmentContext) expressionContext;
+        String variable = assignmentContext.leftHandSide().getText();
+        int lineNumber = assignmentContext.getStart().getLine();
+        rewriter.insertAfter(ctx.getStop(), assignmentContext.getText() + ";");
+        insertVersionUpdateAfter(ctx.getStop(), variable);
+        insertRecordStatementAfter(ctx.getStop(), variable, lineNumber);
+        HashSet<String> postFixAlteredVariables = getIncrementAndDecrementVariablesFromAssignment(assignmentContext);
+        for (String alteredVariable : postFixAlteredVariables) {
+          insertVersionUpdateAfter(ctx.getStop(), alteredVariable);
+          insertRecordStatementAfter(ctx.getStop(), alteredVariable, lineNumber);
+        }
+      }
+
+      if (expressionContext instanceof Java8Parser.PreIncrementExpressionContext
+          || expressionContext instanceof Java8Parser.PreDecrementExpressionContext) {
+        String variable = expressionContext.getChild(1).getText();
+        int lineNumber = expressionContext.getStart().getLine();
+
+        if (ctx.statementNoShortIf().statementWithoutTrailingSubstatement().block() == null) {
+          insertVersionUpdateBefore(ctx.statementNoShortIf().getStart(), variable);
+          insertRecordStatementBefore(ctx.statementNoShortIf().getStart(), variable, lineNumber);
+          rewriter.insertBefore(ctx.statementNoShortIf().getStart(), expressionContext.getText() + ";");
+        } else {
+          rewriter.insertAfter(ctx.statementNoShortIf().getStart(), expressionContext.getText() + ";");
+          insertVersionUpdateAfter(ctx.statementNoShortIf().getStart(), variable);
+          insertRecordStatementAfter(ctx.statementNoShortIf().getStart(), variable, lineNumber);
+        }
+      }
+
+      if (expressionContext instanceof Java8Parser.PostIncrementExpressionContext
+          || expressionContext instanceof Java8Parser.PostDecrementExpressionContext) {
+        if (expressionContext.getChild(0).getChild(0) instanceof Java8Parser.ExpressionNameContext) {
+          String variable = expressionContext.getChild(0).getChild(0).getText();
+          int lineNumber = expressionContext.getStart().getLine();
+          if (ctx.statementNoShortIf().statementWithoutTrailingSubstatement().block() == null) {
+            rewriter.insertAfter(ctx.statementNoShortIf().getStop(), expressionContext.getText() + ";");
+            insertVersionUpdateAfter(ctx.statementNoShortIf().getStop(), variable);
+            insertRecordStatementAfter(ctx.statementNoShortIf().getStop(), variable, lineNumber);
+          } else {
+            insertVersionUpdateBefore(ctx.statementNoShortIf().getStop(), variable);
+            insertRecordStatementBefore(ctx.statementNoShortIf().getStop(), variable, lineNumber);
+            rewriter.insertBefore(ctx.statementNoShortIf().getStop(), expressionContext.getText() + ";");
+          }
+        }
+      }
+    }
+  }
+
+  public void handleBasicForExpression(Java8Parser.BasicForStatementContext ctx) {
+    Token endParenthesis = null;
+    for (int i = 0; i < ctx.getChildCount(); i++) {
+      if (ctx.getChild(i).getText().equals(")")) {
+        TerminalNode node = (TerminalNode) ctx.getChild(i);
+        endParenthesis = node.getSymbol();
+      }
+    }
+    if (endParenthesis != null) {
+      rewriter.replace(ctx.getStart(), endParenthesis, "while (true)");
+    }
+    ArrayList<String> expressionNamesList = getAllExpressionNamesFromPredicate(ctx.expression());
+    Java8Parser.BlockContext blockContext = ctx.statement().statementWithoutTrailingSubstatement().block();
+
+    if (blockContext != null) {
+      for (String variable : expressionNamesList) {
+        insertVersionUpdateAfter(ctx.statement().getStart(), variable);
+        insertRecordStatementAfter(ctx.statement().getStart(), variable, ctx.expression().getStart().getLine());
+      }
+    } else {
+      rewriter.insertBefore(ctx.statement().getStart(), "if (!(" + ctx.expression().getText() + ")) {break;}");
+      for (String variable : expressionNamesList) {
+        insertRecordStatementBefore(ctx.statement().getStart(), variable, ctx.expression().getStart().getLine());
+        insertVersionUpdateBefore(ctx.statement().getStart(), variable);
+      }
+    }
+  }
+
+  public void handleBasicForNoShortIfExpression(Java8Parser.BasicForStatementNoShortIfContext ctx) {
+    Token endParenthesis = null;
+    for (int i = 0; i < ctx.getChildCount(); i++) {
+      if (ctx.getChild(i).getText().equals(")")) {
+        TerminalNode node = (TerminalNode) ctx.getChild(i);
+        endParenthesis = node.getSymbol();
+      }
+    }
+    if (endParenthesis != null) {
+      rewriter.replace(ctx.getStart(), endParenthesis, "while (true)");
+    }
+    ArrayList<String> expressionNamesList = getAllExpressionNamesFromPredicate(ctx.expression());
+    Java8Parser.BlockContext blockContext = ctx.statementNoShortIf().statementWithoutTrailingSubstatement().block();
+
+    if (blockContext != null) {
+      for (String variable : expressionNamesList) {
+        insertVersionUpdateAfter(ctx.statementNoShortIf().getStart(), variable);
+        insertRecordStatementAfter(ctx.statementNoShortIf().getStart(), variable,
+            ctx.expression().getStart().getLine());
+      }
+    } else {
+      rewriter.insertBefore(ctx.statementNoShortIf().getStart(), "if (!(" + ctx.expression().getText() + ")) {break;}");
+      for (String variable : expressionNamesList) {
+        insertRecordStatementBefore(ctx.statementNoShortIf().getStart(), variable,
+            ctx.expression().getStart().getLine());
+        insertVersionUpdateBefore(ctx.statementNoShortIf().getStart(), variable);
+      }
+    }
+  }
+
   public void insertVersionUpdateAfter(Token token, String variableName) {
-    rewriter.insertAfter(token, variableName + "_version++;");
+    int version = variablesInScope.lastElement().get(variableName);
+    for (HashMap<String, Integer> versionMap : variablesInScope) {
+      if (versionMap.keySet().contains(variableName)) {
+        versionMap.put(variableName, version + 1);
+      }
+    }
+    rewriter.insertAfter(token, variableName + "_version = " + variablesInScope.lastElement().get(variableName) + ";");
   }
 
   public void insertVersionUpdateBefore(Token token, String variableName) {
-    rewriter.insertBefore(token, variableName + "_version++;");
+    int version = variablesInScope.lastElement().get(variableName);
+    for (HashMap<String, Integer> versionMap : variablesInScope) {
+      if (versionMap.keySet().contains(variableName)) {
+        versionMap.put(variableName, version + 1);
+      }
+    }
+    rewriter.insertBefore(token, variableName + "_version = " + variablesInScope.lastElement().get(variableName) + ";");
   }
 
   public void insertRecordStatementAfter(Token token, String variableName, int lineNumber) {
