@@ -101,7 +101,6 @@ public class Converter extends Java8BaseListener {
       HashMap<String, Integer> firstBlockScope = new HashMap<String, Integer>();
       for (String param : methodParameters) {
         firstBlockScope.put(param, 0);
-
       }
       variablesInScope.push(firstBlockScope);
     }
@@ -145,13 +144,22 @@ public class Converter extends Java8BaseListener {
       String variable = tokens.getText(varContext);
 
       variablesInScope.lastElement().put(variable, -1);
-
+      // System.out.println(variablesInScope);
       int lineNumber = ctx.getStart().getLine();
+
       if (!isDescendantOf(ctx, Java8Parser.ForInitContext.class)
           && ctx.variableDeclaratorList().variableDeclarator(i).variableInitializer() != null) {
         currentVariableSubscriptMap.put(variable, 0);
         insertVersionUpdateAfter(ctx.getParent().getParent().getStop(), variable);
         insertRecordStatementAfter(ctx.getParent().getStop(), variable, lineNumber);
+        HashSet<String> postFixAlteredVariables = getIncrementAndDecrementVariablesFromAssignment(ctx);
+        for (String alteredVariable : postFixAlteredVariables) {
+          if (insidePredicateBlock(ctx)) {
+            for (HashSet<String> predicateBlockVariables : predicateBlockVariablesStack) {
+              predicateBlockVariables.add(alteredVariable);
+            }
+          }
+        }
       }
       if (!isDescendantOf(ctx, Java8Parser.ForInitContext.class))
         allLocalVariables.add(variable);
@@ -189,7 +197,8 @@ public class Converter extends Java8BaseListener {
     currentVariableSubscriptMap.put(variable, subscript);
     int lineNumber = ctx.getStart().getLine();
 
-    if (!isDescendantOf(ctx, Java8Parser.ForInitContext.class)) {
+    if (!isDescendantOf(ctx, Java8Parser.ForInitContext.class)
+        && !isDescendantOf(ctx, Java8Parser.ForUpdateContext.class)) {
       insertVersionUpdateAfter(ctx.getParent().getParent().getStop(), variable);
       insertRecordStatementAfter(ctx.getParent().getParent().getStop(), variable, lineNumber);
     }
@@ -198,6 +207,11 @@ public class Converter extends Java8BaseListener {
     for (String alteredVariable : postFixAlteredVariables) {
       insertVersionUpdateAfter(ctx.getParent().getParent().getStop(), alteredVariable);
       insertRecordStatementAfter(ctx.getParent().getParent().getStop(), alteredVariable, lineNumber);
+      if (insidePredicateBlock(ctx)) {
+        for (HashSet<String> predicateBlockVariables : predicateBlockVariablesStack) {
+          predicateBlockVariables.add(alteredVariable);
+        }
+      }
     }
   }
 
@@ -239,6 +253,12 @@ public class Converter extends Java8BaseListener {
     this.className = className;
   }
 
+  @Override
+  public void enterClassBody(Java8Parser.ClassBodyContext ctx) {
+    rewriter.insertAfter(ctx.getStart(),
+        "public static void record(String packageName,String clazz,String method,int line,int staticScope,String variableName,Object value,int version) {System.out.println(String.format(\"package: %s, class: %s, method: %s, line: %d, static-scope: %d, variable: %s, value: %s, version: %d\",packageName,clazz,method,line,staticScope,variableName,value.toString(),version));}");
+  }
+
   // When exiting a method, initilize all variables (both from parameters and in body)
   @Override
   public void exitMethodBody(Java8Parser.MethodBodyContext ctx) {
@@ -260,8 +280,10 @@ public class Converter extends Java8BaseListener {
   @Override
   public void exitPostIncrementExpression(Java8Parser.PostIncrementExpressionContext ctx) {
     String varName = tokens.getText(ctx.postfixExpression().expressionName());
+
     if (isDescendantOf(ctx, Java8Parser.ForUpdateContext.class))
       return;
+
     int subscript = currentVariableSubscriptMap.get(varName);
     currentVariableSubscriptMap.put(varName, subscript + 1);
 
@@ -281,6 +303,8 @@ public class Converter extends Java8BaseListener {
   @Override
   public void exitPostDecrementExpression(Java8Parser.PostDecrementExpressionContext ctx) {
     String varName = tokens.getText(ctx.postfixExpression().expressionName());
+    if (isDescendantOf(ctx, Java8Parser.ForUpdateContext.class))
+      return;
     int subscript = currentVariableSubscriptMap.get(varName);
     currentVariableSubscriptMap.put(varName, subscript + 1);
 
@@ -415,6 +439,11 @@ public class Converter extends Java8BaseListener {
   }
 
   @Override
+  public void enterBasicForStatement(Java8Parser.BasicForStatementContext ctx) {
+    predicateBlockVariablesStack.push(new HashSet<String>());
+  }
+
+  @Override
   public void exitBasicForStatement(Java8Parser.BasicForStatementContext ctx) {
 
     if (ctx.forInit() != null) {
@@ -437,6 +466,32 @@ public class Converter extends Java8BaseListener {
     }
     rewriter.insertBefore(ctx.getStart(), "{");
     rewriter.insertAfter(ctx.getStop(), "}");
+
+    HashSet<String> forInitDeclarations = getAllForInitDeclarations(ctx.forInit());
+    for (String variable : predicateBlockVariablesStack.pop()) {
+      if (!(forInitDeclarations.contains(variable))) {
+        insertVersionUpdateAfter(ctx.getStop(), variable);
+        insertRecordStatementAfter(ctx.getStop(), variable, ctx.getStop().getLine());
+      }
+    }
+  }
+
+  public HashSet<String> getAllForInitDeclarations(Java8Parser.ForInitContext ctx) {
+    HashSet<String> forInitDeclarations = new HashSet<>();
+    if (ctx.localVariableDeclaration() != null) {
+      for (int i = 0; i < ctx.localVariableDeclaration().variableDeclaratorList().variableDeclarator().size(); i++) {
+        Java8Parser.VariableDeclaratorIdContext varContext = ctx.localVariableDeclaration().variableDeclaratorList()
+            .variableDeclarator(i).variableDeclaratorId();
+        String variable = tokens.getText(varContext);
+        forInitDeclarations.add(variable);
+      }
+    }
+    return forInitDeclarations;
+  }
+
+  @Override
+  public void enterBasicForStatementNoShortIf(Java8Parser.BasicForStatementNoShortIfContext ctx) {
+    predicateBlockVariablesStack.push(new HashSet<String>());
   }
 
   public void exitBasicForStatementNoShortIf(Java8Parser.BasicForStatementNoShortIfContext ctx) {
@@ -461,6 +516,14 @@ public class Converter extends Java8BaseListener {
     }
     rewriter.insertBefore(ctx.getStart(), "{");
     rewriter.insertAfter(ctx.getStop(), "}");
+
+    HashSet<String> forInitDeclarations = getAllForInitDeclarations(ctx.forInit());
+    for (String variable : predicateBlockVariablesStack.pop()) {
+      if (!(forInitDeclarations.contains(variable))) {
+        insertVersionUpdateAfter(ctx.getStop(), variable);
+        insertRecordStatementAfter(ctx.getStop(), variable, ctx.getStop().getLine());
+      }
+    }
   }
 
   public void handleBasicForInit(Java8Parser.ForInitContext ctx, ParserRuleContext forCtx) {
@@ -485,6 +548,14 @@ public class Converter extends Java8BaseListener {
         }
       }
       rewriter.insertBefore(forCtx.getStart(), forInit);
+      for (int i = 0; i < ctx.localVariableDeclaration().variableDeclaratorList().variableDeclarator().size(); i++) {
+        Java8Parser.VariableDeclaratorIdContext varContext = ctx.localVariableDeclaration().variableDeclaratorList()
+            .variableDeclarator(i).variableDeclaratorId();
+        String variable = tokens.getText(varContext);
+        int lineNumber = forCtx.getStart().getLine();
+        currentVariableSubscriptMap.put(variable, 0);
+        rewriter.insertBefore(forCtx.getStart(), "int " + variable + "_version = -1;");
+      }
     } else if (ctx.statementExpressionList() != null) {
 
       for (int i = 0; i < ctx.statementExpressionList().statementExpression().size(); i++) {
@@ -584,8 +655,8 @@ public class Converter extends Java8BaseListener {
             insertVersionUpdateAfter(ctx.statement().getStop(), variable);
             insertRecordStatementAfter(ctx.statement().getStop(), variable, lineNumber);
           } else {
-            insertVersionUpdateBefore(ctx.statement().getStop(), variable);
             insertRecordStatementBefore(ctx.statement().getStop(), variable, lineNumber);
+            insertVersionUpdateBefore(ctx.statement().getStop(), variable);
             rewriter.insertBefore(ctx.statement().getStop(), expressionContext.getText() + ";");
           }
         }
@@ -712,6 +783,8 @@ public class Converter extends Java8BaseListener {
         versionMap.put(variableName, version + 1);
       }
     }
+    // System.out.println(token.getText());
+    // System.out.println(variableName + " " + variablesInScope.lastElement().get(variableName));
     rewriter.insertAfter(token, variableName + "_version = " + variablesInScope.lastElement().get(variableName) + ";");
   }
 
@@ -722,6 +795,8 @@ public class Converter extends Java8BaseListener {
         versionMap.put(variableName, version + 1);
       }
     }
+    // System.out.println(token.getText());
+    // System.out.println(variableName + " " + variablesInScope.lastElement().get(variableName));
     rewriter.insertBefore(token, variableName + "_version = " + variablesInScope.lastElement().get(variableName) + ";");
   }
 
@@ -807,7 +882,11 @@ public class Converter extends Java8BaseListener {
     while (ctx.getParent() != null) {
       if (Java8Parser.IfThenStatementContext.class.isInstance(ctx.getParent().getParent())
           || Java8Parser.WhileStatementContext.class.isInstance(ctx.getParent().getParent())
-          || Java8Parser.IfThenElseStatementContext.class.isInstance(ctx.getParent().getParent())) {
+          || Java8Parser.WhileStatementNoShortIfContext.class.isInstance(ctx.getParent().getParent())
+          || Java8Parser.IfThenElseStatementContext.class.isInstance(ctx.getParent().getParent())
+          || Java8Parser.IfThenElseStatementNoShortIfContext.class.isInstance(ctx.getParent().getParent())
+          || Java8Parser.ForStatementContext.class.isInstance(ctx.getParent().getParent())
+          || Java8Parser.ForStatementNoShortIfContext.class.isInstance(ctx.getParent().getParent())) {
         return true;
       }
       ctx = ctx.getParent();
