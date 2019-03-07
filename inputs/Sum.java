@@ -1,3 +1,5 @@
+import java.util.ArrayList;
+
 public class Sum {
   public int sum(int a, int b) {
     int c = a;
@@ -22,8 +24,21 @@ public class Sum {
       a = a + 4;
     }
 
-    for (int i = 0; i < 10; ++i) {
+    ArrayList<Integer> intList = new ArrayList<>();
+    intList.add(1);
+    intList.add(1);
+    intList.add(1);
+    intList.add(1);
+    intList.add(1);
+
+    for (Integer item : intList)
+      System.out.println(item);
+
+    for (int i = 0; i < 10; i++) {
       System.out.println("Hello");
+      if (i == 5) {
+        continue;
+      }
     }
     b = b + 8;
     return a + b;

@@ -13,6 +13,7 @@ import org.antlr.v4.runtime.Token;
 import org.antlr.v4.runtime.TokenStream;
 import org.antlr.v4.runtime.TokenStreamRewriter;
 import org.antlr.v4.runtime.tree.TerminalNode;
+import org.antlr.v4.runtime.tree.ParseTree;
 import org.apache.commons.lang3.tuple.ImmutablePair;
 import org.apache.commons.lang3.tuple.Pair;
 
@@ -336,7 +337,7 @@ public class Converter extends Java8BaseListener {
     int phiSubscript = phiSubscriptQueue.removeFirst();
 
     // Get the SSA Form predicate to insert into Phi function
-    String predicate = extractSSAFormPredicate(ctx.expression(), varSubscriptsBeforePredicate);
+    // String predicate = extractSSAFormPredicate(ctx.expression(), varSubscriptsBeforePredicate);
 
     for (String var : predicateBlockVariablesStack.pop()) {
       int subscript = currentVariableSubscriptMap.get(var);
@@ -611,6 +612,8 @@ public class Converter extends Java8BaseListener {
   }
 
   public void handleBasicForUpdate(Java8Parser.BasicForStatementContext ctx) {
+    ArrayList<Java8Parser.ContinueStatementContext> continueContexts = getAllContinueStatementContextsFromForLoop(ctx);
+
     for (int i = 0; i < ctx.forUpdate().statementExpressionList().statementExpression().size(); i++) {
       ParserRuleContext expressionContext = (ParserRuleContext) ctx.forUpdate().statementExpressionList()
           .statementExpression(i).getChild(0);
@@ -626,6 +629,17 @@ public class Converter extends Java8BaseListener {
         for (String alteredVariable : postFixAlteredVariables) {
           insertVersionUpdateAfter(ctx.getStop(), alteredVariable);
           insertRecordStatementAfter(ctx.getStop(), alteredVariable, lineNumber);
+        }
+        for (Java8Parser.ContinueStatementContext continueContext : continueContexts) {
+          for (String alteredVariable : postFixAlteredVariables) {
+            insertRecordStatementBefore(continueContext.getStart(), alteredVariable, lineNumber);
+            insertVersionUpdateBefore(continueContext.getStart(), alteredVariable);
+          }
+          insertRecordStatementBefore(continueContext.getStart(), variable, lineNumber);
+          insertVersionUpdateBefore(continueContext.getStart(), variable);
+          rewriter.insertBefore(ctx.statement().getStop(), expressionContext.getText() + ";");
+          rewriter.insertBefore(continueContext.getStart(), "{");
+          rewriter.insertAfter(continueContext.getStop(), "}");
         }
       }
 
@@ -659,12 +673,21 @@ public class Converter extends Java8BaseListener {
             insertVersionUpdateBefore(ctx.statement().getStop(), variable);
             rewriter.insertBefore(ctx.statement().getStop(), expressionContext.getText() + ";");
           }
+          for (Java8Parser.ContinueStatementContext continueContext : continueContexts) {
+            insertRecordStatementBefore(continueContext.getStart(), variable, lineNumber);
+            insertVersionUpdateBefore(continueContext.getStart(), variable);
+            rewriter.insertBefore(continueContext.getStart(), expressionContext.getText() + ";");
+            rewriter.insertBefore(continueContext.getStart(), "{");
+            rewriter.insertAfter(continueContext.getStop(), "}");
+          }
         }
       }
     }
   }
 
   public void handleBasicForNoShortIfUpdate(Java8Parser.BasicForStatementNoShortIfContext ctx) {
+    ArrayList<Java8Parser.ContinueStatementContext> continueContexts = getAllContinueStatementContextsFromForLoop(ctx);
+
     for (int i = 0; i < ctx.forUpdate().statementExpressionList().statementExpression().size(); i++) {
       ParserRuleContext expressionContext = (ParserRuleContext) ctx.forUpdate().statementExpressionList()
           .statementExpression(i).getChild(0);
@@ -680,6 +703,18 @@ public class Converter extends Java8BaseListener {
         for (String alteredVariable : postFixAlteredVariables) {
           insertVersionUpdateAfter(ctx.getStop(), alteredVariable);
           insertRecordStatementAfter(ctx.getStop(), alteredVariable, lineNumber);
+        }
+
+        for (Java8Parser.ContinueStatementContext continueContext : continueContexts) {
+          for (String alteredVariable : postFixAlteredVariables) {
+            insertRecordStatementBefore(continueContext.getStart(), alteredVariable, lineNumber);
+            insertVersionUpdateBefore(continueContext.getStart(), alteredVariable);
+          }
+          insertRecordStatementBefore(continueContext.getStart(), variable, lineNumber);
+          insertVersionUpdateBefore(continueContext.getStart(), variable);
+          rewriter.insertBefore(continueContext.getStart(), expressionContext.getText() + ";");
+          rewriter.insertBefore(continueContext.getStart(), "{");
+          rewriter.insertAfter(continueContext.getStop(), "}");
         }
       }
 
@@ -712,6 +747,13 @@ public class Converter extends Java8BaseListener {
             insertVersionUpdateBefore(ctx.statementNoShortIf().getStop(), variable);
             insertRecordStatementBefore(ctx.statementNoShortIf().getStop(), variable, lineNumber);
             rewriter.insertBefore(ctx.statementNoShortIf().getStop(), expressionContext.getText() + ";");
+          }
+          for (Java8Parser.ContinueStatementContext continueContext : continueContexts) {
+            insertRecordStatementBefore(continueContext.getStart(), variable, lineNumber);
+            insertVersionUpdateBefore(continueContext.getStart(), variable);
+            rewriter.insertBefore(continueContext.getStart(), expressionContext.getText() + ";");
+            rewriter.insertBefore(continueContext.getStart(), "{");
+            rewriter.insertAfter(continueContext.getStop(), "}");
           }
         }
       }
@@ -774,6 +816,56 @@ public class Converter extends Java8BaseListener {
         insertVersionUpdateBefore(ctx.statementNoShortIf().getStart(), variable);
       }
     }
+  }
+
+  @Override
+  public void exitEnhancedForStatement(Java8Parser.EnhancedForStatementContext ctx) {
+    TerminalNode forNode = (TerminalNode) ctx.getChild(0);
+    TerminalNode startParenthesis = (TerminalNode) ctx.getChild(1);
+    TerminalNode endParenthesis = (TerminalNode) ctx.getChild(ctx.getChildCount() - 2);
+
+    String iterableName = ctx.expression().getText();
+    String iteratorType = ctx.unannType().getText();
+    String iteratorItem = ctx.variableDeclaratorId().getText();
+
+    ArrayList<Java8Parser.ContinueStatementContext> continueContexts = getAllContinueStatementContextsFromForLoop(ctx);
+    // TODO: insert .next() call before continue statements
+
+    rewriter.insertBefore(forNode.getSymbol(),
+        "java.util.Iterator<" + iteratorType + ">" + iterableName + "_iterator = " + iterableName + ".iterator();");
+
+    if (ctx.statement().statementWithoutTrailingSubstatement().block() == null) {
+      rewriter.insertBefore(ctx.statement().getStart(),
+          iteratorType + " " + iteratorItem + "=" + iterableName + "_iterator" + ".next();");
+    } else {
+      rewriter.insertAfter(ctx.statement().getStart(),
+          iteratorType + " " + iteratorItem + "=" + iterableName + "_iterator" + ".next();");
+    }
+
+    rewriter.replace(forNode.getSymbol(), "while");
+    rewriter.replace(startParenthesis.getSymbol(), endParenthesis.getSymbol(),
+        "(" + iterableName + "_iterator" + ".hasNext())");
+
+    if (ctx.statement().statementWithoutTrailingSubstatement().block() == null) {
+      rewriter.insertBefore(ctx.statement().getStart(), "{");
+      rewriter.insertAfter(ctx.statement().getStop(), "}");
+    }
+  }
+
+  public ArrayList<Java8Parser.ContinueStatementContext> getAllContinueStatementContextsFromForLoop(
+      ParserRuleContext ctx) {
+    ArrayList<Java8Parser.ContinueStatementContext> continueContexts = new ArrayList<>();
+
+    int numChildren = ctx.getChildCount();
+    for (int i = 0; i < numChildren; i++) {
+      if (ctx.getChild(i) instanceof Java8Parser.ContinueStatementContext) {
+        continueContexts.add((Java8Parser.ContinueStatementContext) ctx.getChild(i));
+      } else if (ctx.getChild(i) instanceof ParserRuleContext) {
+        continueContexts.addAll(getAllContinueStatementContextsFromForLoop((ParserRuleContext) ctx.getChild(i)));
+      }
+    }
+
+    return continueContexts;
   }
 
   public void insertVersionUpdateAfter(Token token, String variableName) {
@@ -886,7 +978,9 @@ public class Converter extends Java8BaseListener {
           || Java8Parser.IfThenElseStatementContext.class.isInstance(ctx.getParent().getParent())
           || Java8Parser.IfThenElseStatementNoShortIfContext.class.isInstance(ctx.getParent().getParent())
           || Java8Parser.ForStatementContext.class.isInstance(ctx.getParent().getParent())
-          || Java8Parser.ForStatementNoShortIfContext.class.isInstance(ctx.getParent().getParent())) {
+          || Java8Parser.ForStatementNoShortIfContext.class.isInstance(ctx.getParent().getParent())
+          || Java8Parser.EnhancedForStatementContext.class.isInstance(ctx.getParent().getParent())
+          || Java8Parser.EnhancedForStatementNoShortIfContext.class.isInstance(ctx.getParent().getParent())) {
         return true;
       }
       ctx = ctx.getParent();
