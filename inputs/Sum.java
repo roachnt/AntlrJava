@@ -12,7 +12,8 @@ public class Sum {
     if (b < 5) {
       a = 4;
       a = a * 2;
-    }
+    } else
+      a = 6;
 
     if (a > 1) {
       b = 9;
@@ -31,8 +32,11 @@ public class Sum {
     intList.add(1);
     intList.add(1);
 
-    for (Integer item : intList)
-      System.out.println(item);
+    if (a < 3)
+      for (Integer item : intList) {
+        System.out.println(item);
+        a = 4;
+      }
 
     for (int i = 0; i < 10; i++) {
       System.out.println("Hello");
@@ -42,5 +46,14 @@ public class Sum {
     }
     b = b + 8;
     return a + b;
+  }
+
+  public double multiply(int q, int p) {
+    double g = 8.5;
+
+    if (p < 4)
+      g = 9;
+
+    return g;
   }
 }

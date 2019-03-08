@@ -49,6 +49,7 @@ public class Driver {
     // parser.getVocabulary().getLiteralName(i));
     // }
     System.out.println(formattedSource);
+    System.out.println(converter.causalMap);
     // System.out.println(tree.toStringTree(parser)); // print LISP-style tree
   }
 }
