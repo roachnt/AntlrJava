@@ -1,29 +1,18 @@
 import java.util.ArrayList;
 
-public class Sum {
-  public static void record(
-      String packageName,
-      String clazz,
-      String method,
-      int line,
-      int staticScope,
-      String variableName,
-      Object value,
-      int version) {
-    System.out.println(
-        String.format(
-            "package: %s, class: %s, method: %s, line: %d, static-scope: %d, variable: %s, value: %s, version: %d",
-            packageName,
-            clazz,
-            method,
-            line,
-            staticScope,
-            variableName,
-            value.toString(),
-            version));
+public class Out {
+  public static void main(String[] args) {
+    sum(2, 3);
   }
 
-  public int sum(int a, int b) {
+  public static void record(String packageName, String clazz, String method, int line, int staticScope,
+      String variableName, Object value, int version) {
+    System.out.println(String.format(
+        "package: %s, class: %s, method: %s, line: %d, static-scope: %d, variable: %s, value: %s, version: %d",
+        packageName, clazz, method, line, staticScope, variableName, value.toString(), version));
+  }
+
+  public static int sum(int a, int b) {
     int c_version = -1;
     int intList_version = -1;
     int a_version = 0;
