@@ -423,6 +423,44 @@ public class Converter extends Java8BaseListener {
   }
 
   @Override
+  public void enterIfThenElseStatementNoShortIf(Java8Parser.IfThenElseStatementNoShortIfContext ctx) {
+    updateVariableSubscriptPredicateStack();
+    predicateBlockVariablesStack.push(new HashSet<String>());
+    phiSubscriptQueue.addLast(phiCounter);
+    phiCounter++;
+  }
+
+  @Override
+  public void exitIfThenElseStatementNoShortIf(Java8Parser.IfThenElseStatementNoShortIfContext ctx) {
+    HashMap<String, Integer> varSubscriptsBeforePredicate = varSubscriptsBeforePredicateStack.pop();
+    String type = "Integer";
+    ParserRuleContext exprCtx = ctx.expression();
+    int phiSubscript = phiSubscriptQueue.removeFirst();
+
+    // Get the SSA Form predicate to insert into Phi function
+    // String predicate = extractSSAFormPredicate(ctx.expression(), varSubscriptsBeforePredicate);
+    // ArrayList<Java8Parser.AssignmentContext> ifBranchAssignments = getAllAssignmentContexts(ctx.statementNoShortIf());
+    // ArrayList<Java8Parser.AssignmentContext> elseBranchAssignments = getAllAssignmentContexts(ctx.statement());
+
+    for (Java8Parser.StatementNoShortIfContext statementNoShortIfContext : ctx.statementNoShortIf()) {
+      rewriter.insertBefore(statementNoShortIfContext.getStart(), "{");
+      rewriter.insertAfter(statementNoShortIfContext.getStop(), "}");
+    }
+
+    // rewriter.insertBefore(ctx.statement().getStart(), "{");
+    // rewriter.insertAfter(ctx.statement().getStop(), "}");
+
+    for (String var : predicateBlockVariablesStack.pop()) {
+      int subscript = currentVariableSubscriptMap.get(var);
+      currentVariableSubscriptMap.put(var, subscript + 1);
+
+      insertVersionUpdateAfter(ctx.getStop(), var);
+      insertRecordStatementAfter(ctx.getStop(), var, ctx.getStop().getLine());
+    }
+
+  }
+
+  @Override
   public void enterWhileStatement(Java8Parser.WhileStatementContext ctx) {
     updateVariableSubscriptPredicateStack();
     whileLoopVariableStack.push(new HashSet<String>());

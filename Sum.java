@@ -1,25 +1,10 @@
 public class Sum {
 
-  public static void record(
-      String packageName,
-      String clazz,
-      String method,
-      int line,
-      int staticScope,
-      String variableName,
-      Object value,
-      int version) {
-    System.out.println(
-        String.format(
-            "package: %s, class: %s, method: %s, line: %d, static-scope: %d, variable: %s, value: %s, version: %d",
-            packageName,
-            clazz,
-            method,
-            line,
-            staticScope,
-            variableName,
-            value.toString(),
-            version));
+  public static void record(String packageName, String clazz, String method, int line, int staticScope,
+      String variableName, Object value, int version) {
+    System.out.println(String.format(
+        "package: %s, class: %s, method: %s, line: %d, static-scope: %d, variable: %s, value: %s, version: %d",
+        packageName, clazz, method, line, staticScope, variableName, value.toString(), version));
   }
 
   public static void main(String[] args) {

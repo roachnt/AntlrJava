@@ -9,11 +9,14 @@ public class Sum {
     a = --b;
     b = 2;
     a++;
-    if (b < 5) {
-      a = 4;
-      a = a * 2;
-    } else
-      a = 6;
+
+    if (a < 2)
+      if (b < 5)
+        a = 3;
+      else
+        b = 5;
+    else
+      b = 6;
 
     if (a > 1) {
       b = 9;
