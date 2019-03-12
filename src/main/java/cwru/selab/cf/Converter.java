@@ -15,6 +15,7 @@ import org.antlr.v4.runtime.TokenStreamRewriter;
 import org.antlr.v4.runtime.tree.TerminalNode;
 import org.antlr.v4.runtime.tree.ParseTree;
 import org.apache.commons.lang3.tuple.ImmutablePair;
+import org.apache.commons.lang3.tuple.MutablePair;
 import org.apache.commons.lang3.tuple.Pair;
 
 // TODO: If-Else
@@ -96,6 +97,11 @@ public class Converter extends Java8BaseListener {
   }
 
   @Override
+  public void enterPackageName(Java8Parser.PackageNameContext ctx) {
+    packageName = ctx.getText();
+  }
+
+  @Override
   public void enterBlock(Java8Parser.BlockContext ctx) {
     scope++;
     if (!variablesInScope.empty())
@@ -117,6 +123,8 @@ public class Converter extends Java8BaseListener {
   // Handling basic assignment statements
   @Override
   public void enterLeftHandSide(Java8Parser.LeftHandSideContext ctx) {
+    if (ctx.expressionName() == null)
+      return;
     String variable = tokens.getText(ctx);
     int subscript = 0;
 
@@ -144,6 +152,9 @@ public class Converter extends Java8BaseListener {
     for (int i = 0; i < ctx.variableDeclaratorList().variableDeclarator().size(); i++) {
       Java8Parser.VariableDeclaratorIdContext varContext = ctx.variableDeclaratorList().variableDeclarator(i)
           .variableDeclaratorId();
+      if (varContext.dims() != null)
+        continue;
+
       String variable = tokens.getText(varContext);
 
       variablesInScope.lastElement().put(variable, -1);
@@ -206,6 +217,8 @@ public class Converter extends Java8BaseListener {
   public void exitAssignment(Java8Parser.AssignmentContext ctx) {
     String variable = tokens.getText(ctx.leftHandSide());
     int subscript = 0;
+    if (ctx.leftHandSide().expressionName() == null)
+      return;
 
     ArrayList<String> expressionNames = getAllExpressionNamesFromPredicate(ctx.expression());
     ArrayList<String> expressionNamesSSA = new ArrayList<>();
@@ -223,8 +236,16 @@ public class Converter extends Java8BaseListener {
 
     if (!isDescendantOf(ctx, Java8Parser.ForInitContext.class)
         && !isDescendantOf(ctx, Java8Parser.ForUpdateContext.class)) {
-      insertVersionUpdateAfter(ctx.getParent().getParent().getStop(), variable);
-      insertRecordStatementAfter(ctx.getParent().getParent().getStop(), variable, lineNumber);
+      ParserRuleContext currentContext = ctx;
+
+      while (currentContext.getParent() != null) {
+        if (currentContext instanceof Java8Parser.ExpressionStatementContext) {
+          insertVersionUpdateAfter(currentContext.getStop(), variable);
+          insertRecordStatementAfter(currentContext.getStop(), variable, lineNumber);
+          break;
+        }
+        currentContext = currentContext.getParent();
+      }
     }
 
     HashSet<String> postFixAlteredVariables = getIncrementAndDecrementVariablesFromAssignment(ctx);
@@ -249,6 +270,8 @@ public class Converter extends Java8BaseListener {
   // Get the parameters from the method and add them to the maps
   @Override
   public void enterFormalParameter(Java8Parser.FormalParameterContext ctx) {
+    if (ctx.variableDeclaratorId().dims() != null)
+      return;
     String varName = tokens.getText(ctx.variableDeclaratorId());
     String varType = tokens.getText(ctx.unannType());
     methodParameters.add(varName);
@@ -386,33 +409,44 @@ public class Converter extends Java8BaseListener {
 
   }
 
+  Stack<MutablePair<HashMap<String, Integer>, HashMap<String, Integer>>> ifThenElseBranchStack = new Stack<>();
+
   @Override
   public void enterIfThenElseStatement(Java8Parser.IfThenElseStatementContext ctx) {
     updateVariableSubscriptPredicateStack();
     predicateBlockVariablesStack.push(new HashSet<String>());
+    ifThenElseBranchStack.push(new MutablePair<HashMap<String, Integer>, HashMap<String, Integer>>());
     phiSubscriptQueue.addLast(phiCounter);
     phiCounter++;
   }
 
   @Override
   public void exitIfThenElseStatement(Java8Parser.IfThenElseStatementContext ctx) {
+    System.out.println(ctx.getStart().getLine());
     HashMap<String, Integer> varSubscriptsBeforePredicate = varSubscriptsBeforePredicateStack.pop();
     String type = "Integer";
     ParserRuleContext exprCtx = ctx.expression();
     int phiSubscript = phiSubscriptQueue.removeFirst();
+    MutablePair<HashMap<String, Integer>, HashMap<String, Integer>> ifThenElseBranchedVariables = ifThenElseBranchStack
+        .pop();
+    HashMap<String, Integer> ifBranchVariableSubscripts = ifThenElseBranchedVariables.left;
+    HashMap<String, Integer> elseBranchVariableSubscripts = ifThenElseBranchedVariables.right;
 
     // Get the SSA Form predicate to insert into Phi function
     // String predicate = extractSSAFormPredicate(ctx.expression(), varSubscriptsBeforePredicate);
-    ArrayList<Java8Parser.AssignmentContext> ifBranchAssignments = getAllAssignmentContexts(ctx.statementNoShortIf());
-    ArrayList<Java8Parser.AssignmentContext> elseBranchAssignments = getAllAssignmentContexts(ctx.statement());
+    // ArrayList<Java8Parser.AssignmentContext> ifBranchAssignments = getAllAssignmentContexts(ctx.statementNoShortIf());
+    // ArrayList<Java8Parser.AssignmentContext> elseBranchAssignments = getAllAssignmentContexts(ctx.statement());
 
     rewriter.insertBefore(ctx.statementNoShortIf().getStart(), "{");
     rewriter.insertAfter(ctx.statementNoShortIf().getStop(), "}");
+    HashSet<String> ifBlockVariables = getAllAlteredVariablesFromContext(ctx.statementNoShortIf());
 
     rewriter.insertBefore(ctx.statement().getStart(), "{");
     rewriter.insertAfter(ctx.statement().getStop(), "}");
+    HashSet<String> elseBlockVariables = getAllAlteredVariablesFromContext(ctx.statement());
 
-    for (String var : predicateBlockVariablesStack.pop()) {
+    HashSet<String> predicateBlockVariables = predicateBlockVariablesStack.pop();
+    for (String var : predicateBlockVariables) {
       int subscript = currentVariableSubscriptMap.get(var);
       currentVariableSubscriptMap.put(var, subscript + 1);
 
@@ -420,12 +454,39 @@ public class Converter extends Java8BaseListener {
       insertRecordStatementAfter(ctx.getStop(), var, ctx.getStop().getLine());
     }
 
+    HashSet<String> allAddedVariables = new HashSet<>();
+    for (String var : ifBlockVariables) {
+      causalMap.put(var + "_" + variablesInScope.lastElement().get(var), new ArrayList<String>());
+
+      causalMap.get(var + "_" + variablesInScope.lastElement().get(var))
+          .add(var + "_" + ifBranchVariableSubscripts.get(var));
+      allAddedVariables.add(var);
+    }
+
+    for (String var : elseBlockVariables) {
+      if (!causalMap.containsKey(var + "_" + variablesInScope.lastElement().get(var)))
+        causalMap.put(var + "_" + variablesInScope.lastElement().get(var), new ArrayList<String>());
+
+      causalMap.get(var + "_" + variablesInScope.lastElement().get(var))
+          .add(var + "_" + elseBranchVariableSubscripts.get(var));
+      allAddedVariables.add(var);
+    }
+
+    for (String var : allAddedVariables) {
+      if (causalMap.get(var + "_" + variablesInScope.lastElement().get(var)).size() == 1) {
+        causalMap.get(var + "_" + variablesInScope.lastElement().get(var))
+            .add(var + "_" + varSubscriptsBeforePredicate.get(var));
+      }
+    }
+
   }
 
   @Override
   public void enterIfThenElseStatementNoShortIf(Java8Parser.IfThenElseStatementNoShortIfContext ctx) {
+    System.out.println(ctx.getStart().getLine());
     updateVariableSubscriptPredicateStack();
     predicateBlockVariablesStack.push(new HashSet<String>());
+    ifThenElseBranchStack.push(new MutablePair<HashMap<String, Integer>, HashMap<String, Integer>>());
     phiSubscriptQueue.addLast(phiCounter);
     phiCounter++;
   }
@@ -436,19 +497,17 @@ public class Converter extends Java8BaseListener {
     String type = "Integer";
     ParserRuleContext exprCtx = ctx.expression();
     int phiSubscript = phiSubscriptQueue.removeFirst();
-
-    // Get the SSA Form predicate to insert into Phi function
-    // String predicate = extractSSAFormPredicate(ctx.expression(), varSubscriptsBeforePredicate);
-    // ArrayList<Java8Parser.AssignmentContext> ifBranchAssignments = getAllAssignmentContexts(ctx.statementNoShortIf());
-    // ArrayList<Java8Parser.AssignmentContext> elseBranchAssignments = getAllAssignmentContexts(ctx.statement());
+    MutablePair<HashMap<String, Integer>, HashMap<String, Integer>> ifThenElseBranchedVariables = ifThenElseBranchStack
+        .pop();
+    HashMap<String, Integer> ifBranchVariableSubscripts = ifThenElseBranchedVariables.left;
+    HashMap<String, Integer> elseBranchVariableSubscripts = ifThenElseBranchedVariables.right;
 
     for (Java8Parser.StatementNoShortIfContext statementNoShortIfContext : ctx.statementNoShortIf()) {
       rewriter.insertBefore(statementNoShortIfContext.getStart(), "{");
       rewriter.insertAfter(statementNoShortIfContext.getStop(), "}");
     }
-
-    // rewriter.insertBefore(ctx.statement().getStart(), "{");
-    // rewriter.insertAfter(ctx.statement().getStop(), "}");
+    HashSet<String> ifBlockVariables = getAllAlteredVariablesFromContext(ctx.statementNoShortIf().get(0));
+    HashSet<String> elseBlockVariables = getAllAlteredVariablesFromContext(ctx.statementNoShortIf().get(1));
 
     for (String var : predicateBlockVariablesStack.pop()) {
       int subscript = currentVariableSubscriptMap.get(var);
@@ -458,6 +517,69 @@ public class Converter extends Java8BaseListener {
       insertRecordStatementAfter(ctx.getStop(), var, ctx.getStop().getLine());
     }
 
+    HashSet<String> allAddedVariables = new HashSet<>();
+    for (String var : ifBlockVariables) {
+      causalMap.put(var + "_" + variablesInScope.lastElement().get(var), new ArrayList<String>());
+
+      causalMap.get(var + "_" + variablesInScope.lastElement().get(var))
+          .add(var + "_" + ifBranchVariableSubscripts.get(var));
+      allAddedVariables.add(var);
+    }
+
+    for (String var : elseBlockVariables) {
+      if (!causalMap.containsKey(var + "_" + variablesInScope.lastElement().get(var)))
+        causalMap.put(var + "_" + variablesInScope.lastElement().get(var), new ArrayList<String>());
+
+      causalMap.get(var + "_" + variablesInScope.lastElement().get(var))
+          .add(var + "_" + elseBranchVariableSubscripts.get(var));
+      allAddedVariables.add(var);
+    }
+
+    for (String var : allAddedVariables) {
+      if (causalMap.get(var + "_" + variablesInScope.lastElement().get(var)).size() == 1) {
+        causalMap.get(var + "_" + variablesInScope.lastElement().get(var))
+            .add(var + "_" + varSubscriptsBeforePredicate.get(var));
+      }
+    }
+
+  }
+
+  @Override
+  public void exitStatementNoShortIf(Java8Parser.StatementNoShortIfContext ctx) {
+    ParserRuleContext parentContext = ctx.getParent();
+    if (!(parentContext instanceof Java8Parser.IfThenElseStatementContext)
+        && !(parentContext instanceof Java8Parser.IfThenElseStatementNoShortIfContext))
+      return;
+
+    HashMap<String, Integer> currentVariableSubscripts = variablesInScope.lastElement();
+
+    // Check if it is if branch or else branch
+    // 1. Figure out which child of parent context it is
+    for (int i = 0; i < parentContext.getChildCount(); i++) {
+      if (parentContext.getChild(i) instanceof Java8Parser.StatementNoShortIfContext) {
+        Java8Parser.StatementNoShortIfContext childCtx = (Java8Parser.StatementNoShortIfContext) parentContext
+            .getChild(i);
+        // If the child is the statement context
+        if (childCtx.equals(ctx)) {
+          // if block condition
+          if (parentContext.getChild(i - 1).getText().equals(")")) {
+            ifThenElseBranchStack.lastElement().setLeft(new HashMap<>(currentVariableSubscripts));
+          } else if (parentContext.getChild(i - 1).getText().equals("else")) {
+            ifThenElseBranchStack.lastElement().setRight(new HashMap<>(currentVariableSubscripts));
+          }
+        }
+      }
+    }
+  }
+
+  @Override
+  public void exitStatement(Java8Parser.StatementContext ctx) {
+    ParserRuleContext parentContext = ctx.getParent();
+    if (!(parentContext instanceof Java8Parser.IfThenElseStatementContext)
+        && !(parentContext instanceof Java8Parser.IfThenElseStatementNoShortIfContext))
+      return;
+    HashMap<String, Integer> currentVariableSubscripts = variablesInScope.lastElement();
+    ifThenElseBranchStack.lastElement().setRight(new HashMap<>(currentVariableSubscripts));
   }
 
   @Override
@@ -634,15 +756,24 @@ public class Converter extends Java8BaseListener {
     rewriter.insertAfter(ctx.getStop(), "}");
 
     HashSet<String> forInitDeclarations = getAllForInitDeclarations(ctx.forInit());
+    System.out.println(ctx.getStart().getLine());
+    System.out.println("predicateBlockVariablesStack: " + predicateBlockVariablesStack);
+    for (String variable : forInitDeclarations) {
+      for (HashSet<String> predicateBlockVariables : predicateBlockVariablesStack) {
+        if (predicateBlockVariables.contains(variable))
+          predicateBlockVariables.remove(variable);
+      }
+    }
     for (String variable : predicateBlockVariablesStack.pop()) {
       if (!(forInitDeclarations.contains(variable))) {
 
         ArrayList<String> confounders = new ArrayList<>();
+        int lineNumber = ctx.getStop().getLine();
         confounders.add(variable + "_" + varSubscriptsBeforePredicate.get(variable));
         confounders.add(variable + "_" + variablesInScope.lastElement().get(variable));
 
         insertVersionUpdateAfter(ctx.getStop(), variable);
-        insertRecordStatementAfter(ctx.getStop(), variable, ctx.getStop().getLine());
+        insertRecordStatementAfter(ctx.getStop(), variable, lineNumber);
 
         causalMap.put(variable + "_" + variablesInScope.lastElement().get(variable), new ArrayList<String>());
         causalMap.get(variable + "_" + variablesInScope.lastElement().get(variable)).addAll(confounders);
@@ -651,6 +782,8 @@ public class Converter extends Java8BaseListener {
   }
 
   public HashSet<String> getAllForInitDeclarations(Java8Parser.ForInitContext ctx) {
+    if (ctx == null)
+      return new HashSet<String>();
     HashSet<String> forInitDeclarations = new HashSet<>();
     if (ctx.localVariableDeclaration() != null) {
       for (int i = 0; i < ctx.localVariableDeclaration().variableDeclaratorList().variableDeclarator().size(); i++) {
@@ -959,6 +1092,7 @@ public class Converter extends Java8BaseListener {
 
     if (blockContext != null) {
       for (String variable : expressionNamesList) {
+        System.out.println(variable);
         insertVersionUpdateAfter(ctx.statement().getStart(), variable);
         insertRecordStatementAfter(ctx.statement().getStart(), variable, ctx.expression().getStart().getLine());
       }
@@ -1140,8 +1274,41 @@ public class Converter extends Java8BaseListener {
     return assignmentContexts;
   }
 
+  public HashSet<String> getAllAlteredVariablesFromContext(ParserRuleContext ctx) {
+    HashSet<String> allAlteredVariables = new HashSet<>();
+
+    int numChildren = ctx.getChildCount();
+    for (int i = 0; i < numChildren; i++) {
+      if (ctx instanceof Java8Parser.AssignmentContext) {
+        Java8Parser.AssignmentContext assignmentCtx = (Java8Parser.AssignmentContext) ctx;
+        allAlteredVariables.add(assignmentCtx.leftHandSide().getText());
+        allAlteredVariables.addAll(getIncrementAndDecrementVariablesFromAssignment(assignmentCtx));
+      } else if (ctx.getChild(i) instanceof Java8Parser.PreIncrementExpressionContext) {
+        Java8Parser.PreIncrementExpressionContext expr = (Java8Parser.PreIncrementExpressionContext) ctx.getChild(i);
+        allAlteredVariables.add(expr.unaryExpression().getText());
+      } else if (ctx.getChild(i) instanceof Java8Parser.PreDecrementExpressionContext) {
+        Java8Parser.PreDecrementExpressionContext expr = (Java8Parser.PreDecrementExpressionContext) ctx.getChild(i);
+        allAlteredVariables.add(expr.unaryExpression().getText());
+      } else if (ctx.getChild(i) instanceof Java8Parser.PostIncrementExpressionContext) {
+        Java8Parser.PostIncrementExpressionContext expr = (Java8Parser.PostIncrementExpressionContext) ctx.getChild(i);
+        String varName = tokens.getText(expr.postfixExpression().expressionName());
+        allAlteredVariables.add(varName);
+      } else if (ctx.getChild(i) instanceof Java8Parser.PostDecrementExpressionContext) {
+        Java8Parser.PostDecrementExpressionContext expr = (Java8Parser.PostDecrementExpressionContext) ctx.getChild(i);
+        String varName = tokens.getText(expr.postfixExpression().expressionName());
+        allAlteredVariables.add(varName);
+      } else if (ctx.getChild(i) instanceof ParserRuleContext) {
+        allAlteredVariables.addAll(getAllAlteredVariablesFromContext((ParserRuleContext) ctx.getChild(i)));
+      }
+    }
+
+    return allAlteredVariables;
+  }
+
   public void insertVersionUpdateAfter(Token token, String variableName) {
     if (!variablesInScope.empty()) {
+      if (!variablesInScope.lastElement().containsKey(variableName))
+        return;
       int version = variablesInScope.lastElement().get(variableName);
       for (HashMap<String, Integer> versionMap : variablesInScope) {
         if (versionMap.keySet().contains(variableName)) {
@@ -1157,6 +1324,8 @@ public class Converter extends Java8BaseListener {
 
   public void insertVersionUpdateBefore(Token token, String variableName) {
     if (!variablesInScope.empty()) {
+      if (!variablesInScope.lastElement().containsKey(variableName))
+        return;
       int version = variablesInScope.lastElement().get(variableName);
       for (HashMap<String, Integer> versionMap : variablesInScope) {
         if (versionMap.keySet().contains(variableName)) {
@@ -1169,6 +1338,8 @@ public class Converter extends Java8BaseListener {
   }
 
   public void insertRecordStatementAfter(Token token, String variableName, int lineNumber) {
+    if (!variablesInScope.lastElement().containsKey(variableName))
+      return;
     String variableInQuotes = "\"" + variableName + "\"";
     String packageNameInQuotes = "\"" + packageName + "\"";
     String classNameInQuotes = "\"" + className + "\"";
@@ -1180,6 +1351,8 @@ public class Converter extends Java8BaseListener {
   }
 
   public void insertRecordStatementBefore(Token token, String variableName, int lineNumber) {
+    if (!variablesInScope.lastElement().containsKey(variableName))
+      return;
     String variableInQuotes = "\"" + variableName + "\"";
     String packageNameInQuotes = "\"" + packageName + "\"";
     String classNameInQuotes = "\"" + className + "\"";
@@ -1211,15 +1384,24 @@ public class Converter extends Java8BaseListener {
   public ArrayList<String> getAllExpressionNamesFromPredicate(ParserRuleContext expressionContext) {
 
     ArrayList<String> expressionNamesList = new ArrayList<>();
-    ArrayList<TerminalNode> ctxTokens = getAllTokensFromContext(expressionContext);
 
-    for (TerminalNode token : ctxTokens) {
-      String tokenText = token.getText();
-      int tokenType = token.getSymbol().getType();
-      if (tokenType == IDENTIFIER_TYPE) {
-        expressionNamesList.add(tokenText);
+    int numChildren = expressionContext.getChildCount();
+    for (int i = 0; i < numChildren; i++) {
+      if (expressionContext.getChild(i) instanceof Java8Parser.ExpressionNameContext) {
+        expressionNamesList.add(expressionContext.getChild(i).getText());
+      } else if (expressionContext.getChild(i) instanceof ParserRuleContext) {
+        expressionNamesList
+            .addAll(getAllExpressionNamesFromPredicate((ParserRuleContext) expressionContext.getChild(i)));
       }
     }
+    // return false;
+    // for (TerminalNode token : ctxTokens) {
+    //   String tokenText = token.getText();
+    //   int tokenType = token.getSymbol().getType();
+    //   if (tokenType == IDENTIFIER_TYPE) {
+    //     expressionNamesList.add(tokenText);
+    //   }
+    // }
     return expressionNamesList;
   }
 
