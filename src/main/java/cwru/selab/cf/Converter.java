@@ -274,7 +274,8 @@ public class Converter extends Java8BaseListener {
     methodParameters.add(varName);
     variableTypeMap.put(varName, varType);
     currentVariableSubscriptMap.put(varName, 0);
-    variableSubscripts.put(varName, 0);
+    if (!variableSubscripts.containsKey(varName))
+      variableSubscripts.put(varName, 0);
   }
 
   // When entering the method, create the SSA form of the parameters to the body of the method
@@ -284,6 +285,7 @@ public class Converter extends Java8BaseListener {
   @Override
   public void enterMethodDeclarator(Java8Parser.MethodDeclaratorContext ctx) {
     String methodName = ctx.getChild(0).getText();
+    System.out.println(methodName);
     currentMethodName = methodName;
   }
 
@@ -304,22 +306,20 @@ public class Converter extends Java8BaseListener {
   @Override
   public void enterMethodBody(Java8Parser.MethodBodyContext ctx) {
     subscriptsBeforeMethod.putAll(variableSubscripts);
-    for (HashMap.Entry<String, String> entry : variableTypeMap.entrySet()) {
-      if (!currentVariableSubscriptMap.containsKey(entry.getKey()))
-        return;
-      int subscript = currentVariableSubscriptMap.get(entry.getKey());
-      if (variableSubscripts.containsKey(entry.getKey()))
-        initializeFormalParams += "int " + entry.getKey() + "_version" + " = " + variableSubscripts.get(entry.getKey())
-            + ";";
+    for (String variable : methodParameters) {
+      int subscript = currentVariableSubscriptMap.get(variable);
+      if (variableSubscripts.containsKey(variable))
+        initializeFormalParams += "int " + variable + "_version" + " = " + variableSubscripts.get(variable) + ";";
       else
-        initializeFormalParams += "int " + entry.getKey() + "_version" + " = 0" + ";";
+        initializeFormalParams += "int " + variable + "_version" + " = 0" + ";";
     }
   }
 
   // When exiting a method, initilize all variables (both from parameters and in body)
   @Override
   public void exitMethodBody(Java8Parser.MethodBodyContext ctx) {
-    // System.out.println(subscriptsBeforeMethod);
+    System.out.println(subscriptsBeforeMethod);
+    System.out.println(variableSubscripts);
     for (String variable : allLocalVariables) {
       if (!methodParameters.contains(variable)) {
         if (subscriptsBeforeMethod.containsKey(variable))
@@ -333,6 +333,7 @@ public class Converter extends Java8BaseListener {
     currentMethodName = "";
     initializeFormalParams = "";
     allLocalVariables.clear();
+    methodParameters.clear();
   }
 
   @Override
@@ -776,6 +777,10 @@ public class Converter extends Java8BaseListener {
     if (ctx.forInit() != null) {
       handleBasicForInit(ctx.forInit(), ctx);
     }
+
+    if (ctx.expression() != null) {
+      handleBasicForExpression(ctx);
+    }
   }
 
   @Override
@@ -788,9 +793,6 @@ public class Converter extends Java8BaseListener {
       handleBasicForUpdate(ctx);
     }
 
-    if (ctx.expression() != null) {
-      handleBasicForExpression(ctx);
-    }
     if (ctx.statement().statementWithoutTrailingSubstatement().block() == null) {
       rewriter.insertBefore(ctx.statement().getStart(), "{");
       rewriter.insertAfter(ctx.statement().getStop(), "}");
@@ -850,6 +852,10 @@ public class Converter extends Java8BaseListener {
     if (ctx.forInit() != null) {
       handleBasicForInit(ctx.forInit(), ctx);
     }
+
+    if (ctx.expression() != null) {
+      handleBasicForNoShortIfExpression(ctx);
+    }
   }
 
   public void exitBasicForStatementNoShortIf(Java8Parser.BasicForStatementNoShortIfContext ctx) {
@@ -858,10 +864,6 @@ public class Converter extends Java8BaseListener {
 
     if (ctx.forUpdate() != null) {
       handleBasicForNoShortIfUpdate(ctx);
-    }
-
-    if (ctx.expression() != null) {
-      handleBasicForNoShortIfExpression(ctx);
     }
 
     if (ctx.statementNoShortIf().statementWithoutTrailingSubstatement().block() == null) {
@@ -909,9 +911,9 @@ public class Converter extends Java8BaseListener {
         int lineNumber = forCtx.getStart().getLine();
         currentVariableSubscriptMap.put(variable, 0);
         if (variableSubscripts.containsKey(variable)) {
-          initializer = "int " + variable + "_version = " + variableSubscripts.get(variable) + ";";
+          initializer += "int " + variable + "_version = " + variableSubscripts.get(variable) + ";";
         } else {
-          initializer = "int " + variable + "_version = -1;";
+          initializer += "int " + variable + "_version = -1;";
         }
       }
       for (int i = 0; i < ctx.localVariableDeclaration().variableDeclaratorList().variableDeclarator().size(); i++) {

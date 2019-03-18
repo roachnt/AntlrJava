@@ -81,14 +81,14 @@ public class FFT {
       while (true) {
         nd_version = 1;
         record("SciMark", "FFT", "inverse", 43, 1, "nd", nd, nd_version);
-        i_version = 2;
+        i_version = 1;
         record("SciMark", "FFT", "inverse", 43, 1, "i", i, i_version);
         if (!(i < nd)) {
           break;
         }
         data[i] *= norm;
         i++;
-        i_version = 1;
+        i_version = 2;
         record("SciMark", "FFT", "inverse", 43, 1, "i", i, i_version);
       }
     }
@@ -121,7 +121,7 @@ public class FFT {
       i_version = 3;
       record("SciMark", "FFT", "test", 61, 1, "i", i, i_version);
       while (true) {
-        i_version = 5;
+        i_version = 4;
         record("SciMark", "FFT", "test", 61, 1, "i", i, i_version);
         nd_version = 3;
         record("SciMark", "FFT", "test", 61, 1, "nd", nd, nd_version);
@@ -135,7 +135,7 @@ public class FFT {
         diff_version = 1;
         record("SciMark", "FFT", "test", 63, 2, "diff", diff, diff_version);
         i++;
-        i_version = 4;
+        i_version = 5;
         record("SciMark", "FFT", "test", 61, 1, "i", i, i_version);
       }
     }
@@ -147,6 +147,7 @@ public class FFT {
   /** Make a random array of n (complex) elements. */
   public static double[] makeRandom(int n) {
     int nd_version = 3;
+    int n_version = 0;
     int nd = 2 * n;
     nd_version = 4;
     record("SciMark", "FFT", "makeRandom", 72, 1, "nd", nd, nd_version);
@@ -159,14 +160,14 @@ public class FFT {
       while (true) {
         nd_version = 5;
         record("SciMark", "FFT", "makeRandom", 74, 1, "nd", nd, nd_version);
-        i_version = 8;
+        i_version = 7;
         record("SciMark", "FFT", "makeRandom", 74, 1, "i", i, i_version);
         if (!(i < nd)) {
           break;
         }
         data[i] = Math.random();
         i++;
-        i_version = 7;
+        i_version = 8;
         record("SciMark", "FFT", "makeRandom", 74, 1, "i", i, i_version);
       }
     }
@@ -175,6 +176,7 @@ public class FFT {
 
   /** Simple Test routine. */
   public static void main(String args[]) {
+    int n_version = 0;
     if (args.length == 0) {
       {
         int n = 1024;
@@ -189,7 +191,7 @@ public class FFT {
       i_version = 9;
       record("SciMark", "FFT", "main", 87, 1, "i", i, i_version);
       while (true) {
-        i_version = 11;
+        i_version = 10;
         record("SciMark", "FFT", "main", 87, 1, "i", i, i_version);
         if (!(i < args.length)) {
           break;
@@ -199,7 +201,7 @@ public class FFT {
         record("SciMark", "FFT", "main", 88, 2, "n", n, n_version);
         System.out.println("n=" + n + " => RMS Error=" + test(makeRandom(n)));
         i++;
-        i_version = 10;
+        i_version = 11;
         record("SciMark", "FFT", "main", 87, 1, "i", i, i_version);
       }
     }
@@ -208,6 +210,7 @@ public class FFT {
 
   protected static int log2(int n) {
     int log_version = -1;
+    int n_version = 2;
     int log = 0;
     log_version = 0;
     record("SciMark", "FFT", "log2", 95, 1, "log", log, log_version);
@@ -217,16 +220,16 @@ public class FFT {
       k_version = 0;
       record("SciMark", "FFT", "log2", 96, 1, "k", k, k_version);
       while (true) {
-        n_version = 1;
+        n_version = 3;
         record("SciMark", "FFT", "log2", 96, 1, "n", n, n_version);
-        k_version = 2;
+        k_version = 1;
         record("SciMark", "FFT", "log2", 96, 1, "k", k, k_version);
         if (!(k < n)) {
           break;
         }
         ;
         k *= 2;
-        k_version = 1;
+        k_version = 2;
         record("SciMark", "FFT", "log2", 96, 1, "k", k, k_version);
         log++;
         log_version = 1;
@@ -248,6 +251,7 @@ public class FFT {
     int wd_real_version = -1;
     int wd_imag_version = -1;
     int theta_version = -1;
+    int n_version = 3;
     int w_imag_version = -1;
     int s_version = -1;
     int z1_imag_version = -1;
@@ -255,11 +259,12 @@ public class FFT {
     int logn_version = -1;
     int tmp_real_version = -1;
     int s2_version = -1;
+    int direction_version = 0;
     if (data.length == 0) {
       return;
     }
     int n = data.length / 2;
-    n_version = 2;
+    n_version = 4;
     record("SciMark", "FFT", "transform_internal", 104, 1, "n", n, n_version);
     if (n == 1) {
       return;
@@ -274,6 +279,7 @@ public class FFT {
     /* apply fft recursion */
     /* this loop executed log2(N) times */
     {
+      int bit_version = -1;
       int dual_version = -1;
       int bit = 0, dual = 1;
       dual_version = 0;
@@ -281,7 +287,7 @@ public class FFT {
       bit_version = 0;
       record("SciMark", "FFT", "transform_internal", 113, 1, "bit", bit, bit_version);
       while (true) {
-        bit_version = 2;
+        bit_version = 1;
         record("SciMark", "FFT", "transform_internal", 113, 1, "bit", bit, bit_version);
         logn_version = 1;
         record("SciMark", "FFT", "transform_internal", 113, 1, "logn", logn, logn_version);
@@ -315,9 +321,9 @@ public class FFT {
           b_version = 0;
           record("SciMark", "FFT", "transform_internal", 123, 2, "b", b, b_version);
           while (true) {
-            b_version = 2;
+            b_version = 1;
             record("SciMark", "FFT", "transform_internal", 123, 2, "b", b, b_version);
-            n_version = 3;
+            n_version = 5;
             record("SciMark", "FFT", "transform_internal", 123, 2, "n", n, n_version);
             if (!(b < n)) {
               break;
@@ -358,7 +364,7 @@ public class FFT {
             data[i + 1] += wd_imag;
           }
           b += 2 * dual;
-          b_version = 1;
+          b_version = 2;
           record("SciMark", "FFT", "transform_internal", 123, 2, "b", b, b_version);
         }
 
@@ -369,7 +375,7 @@ public class FFT {
           a_version = 0;
           record("SciMark", "FFT", "transform_internal", 137, 2, "a", a, a_version);
           while (true) {
-            a_version = 2;
+            a_version = 1;
             record("SciMark", "FFT", "transform_internal", 137, 2, "a", a, a_version);
             dual_version = 1;
             record("SciMark", "FFT", "transform_internal", 137, 2, "dual", dual, dual_version);
@@ -415,9 +421,9 @@ public class FFT {
               b_version = 3;
               record("SciMark", "FFT", "transform_internal", 145, 3, "b", b, b_version);
               while (true) {
-                b_version = 5;
+                b_version = 4;
                 record("SciMark", "FFT", "transform_internal", 145, 3, "b", b, b_version);
-                n_version = 4;
+                n_version = 6;
                 record("SciMark", "FFT", "transform_internal", 145, 3, "n", n, n_version);
                 if (!(b < n)) {
                   break;
@@ -481,11 +487,11 @@ public class FFT {
                 data[i + 1] += wd_imag;
               }
               b += 2 * dual;
-              b_version = 4;
+              b_version = 5;
               record("SciMark", "FFT", "transform_internal", 145, 3, "b", b, b_version);
             }
             a++;
-            a_version = 1;
+            a_version = 2;
             record("SciMark", "FFT", "transform_internal", 137, 2, "a", a, a_version);
           }
         }
@@ -494,7 +500,7 @@ public class FFT {
         w_imag_version = 2;
         record("SciMark", "FFT", "transform_internal", 160, 2, "w_imag", w_imag, w_imag_version);
         bit++;
-        bit_version = 1;
+        bit_version = 2;
         record("SciMark", "FFT", "transform_internal", 113, 1, "bit", bit, bit_version);
       }
       dual *= 2;
@@ -510,11 +516,12 @@ public class FFT {
     int i_version = 13;
     int j_version = 1;
     int k_version = 2;
+    int n_version = 6;
     int nm1_version = -1;
     int tmp_real_version = 0;
     /* This is the Goldrader bit-reversal algorithm */
     int n = data.length / 2;
-    n_version = 5;
+    n_version = 7;
     record("SciMark", "FFT", "bitreverse", 167, 1, "n", n, n_version);
     int nm1 = n - 1;
     nm1_version = 0;
@@ -527,7 +534,7 @@ public class FFT {
     record("SciMark", "FFT", "bitreverse", 170, 1, "j", j, j_version);
     {
       while (true) {
-        i_version = 16;
+        i_version = 15;
         record("SciMark", "FFT", "bitreverse", 171, 1, "i", i, i_version);
         nm1_version = 1;
         record("SciMark", "FFT", "bitreverse", 171, 1, "nm1", nm1, nm1_version);
@@ -591,7 +598,7 @@ public class FFT {
         j_version = 6;
         record("SciMark", "FFT", "bitreverse", 198, 2, "j", j, j_version);
         i++;
-        i_version = 15;
+        i_version = 16;
         record("SciMark", "FFT", "bitreverse", 171, 1, "i", i, i_version);
       }
     }
