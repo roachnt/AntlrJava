@@ -1,5 +1,3 @@
-package SciMark;
-
 /**
  * Computes FFT's of complex, double precision data where n is an integer power of 2. This appears
  * to be slower than the Radix2 method, but the code is smaller and simpler, and it requires no
@@ -15,6 +13,10 @@ package SciMark;
 /* See {@link ComplexDoubleFFT ComplexDoubleFFT} for details of data layout.
  */
 
+import java.io.BufferedWriter;
+import java.io.FileWriter;
+import java.io.IOException;
+
 public class FFT {
   public static void record(
       String packageName,
@@ -25,17 +27,34 @@ public class FFT {
       String variableName,
       Object value,
       int version) {
-    System.out.println(
-        String.format(
-            "package: %s, class: %s, method: %s, line: %d, static-scope: %d, variable: %s, value: %s, version: %d",
-            packageName,
-            clazz,
-            method,
-            line,
-            staticScope,
-            variableName,
-            value.toString(),
-            version));
+    BufferedWriter writer = null;
+    try {
+      writer = new BufferedWriter(new FileWriter(clazz + "_output.txt", true));
+    } catch (IOException e) {
+      System.out.println(e.getMessage());
+    }
+    try {
+      writer.append(
+          packageName
+              + ","
+              + clazz
+              + ","
+              + method
+              + ","
+              + line
+              + ","
+              + staticScope
+              + ","
+              + variableName
+              + ","
+              + version
+              + ","
+              + value
+              + "\n");
+      writer.close();
+    } catch (Exception e) {
+      System.out.println(e.getMessage());
+    }
   }
 
   public static final double num_flops(int N) {
@@ -44,10 +63,10 @@ public class FFT {
     int N_version = 0;
     double Nd = (double) N;
     Nd_version = 0;
-    record("SciMark", "FFT", "num_flops", 20, 1, "Nd", Nd, Nd_version);
+    record("", "FFT", "num_flops", 19, 1, "Nd", Nd, Nd_version);
     double logN = (double) log2(N);
     logN_version = 0;
-    record("SciMark", "FFT", "num_flops", 21, 1, "logN", logN, logN_version);
+    record("", "FFT", "num_flops", 20, 1, "logN", logN, logN_version);
 
     return (5.0 * Nd - 2) * logN + 2 * (Nd + 1);
   }
@@ -66,30 +85,30 @@ public class FFT {
     // Normalize
     int nd = data.length;
     nd_version = 0;
-    record("SciMark", "FFT", "inverse", 40, 1, "nd", nd, nd_version);
+    record("", "FFT", "inverse", 38, 1, "nd", nd, nd_version);
     int n = nd / 2;
     n_version = 0;
-    record("SciMark", "FFT", "inverse", 41, 1, "n", n, n_version);
+    record("", "FFT", "inverse", 39, 1, "n", n, n_version);
     double norm = 1 / ((double) n);
     norm_version = 0;
-    record("SciMark", "FFT", "inverse", 42, 1, "norm", norm, norm_version);
+    record("", "FFT", "inverse", 40, 1, "norm", norm, norm_version);
     {
       int i_version = -1;
       int i = 0;
       i_version = 0;
-      record("SciMark", "FFT", "inverse", 43, 1, "i", i, i_version);
+      record("", "FFT", "inverse", 41, 1, "i", i, i_version);
       while (true) {
         nd_version = 1;
-        record("SciMark", "FFT", "inverse", 43, 1, "nd", nd, nd_version);
+        record("", "FFT", "inverse", 41, 1, "nd", nd, nd_version);
         i_version = 1;
-        record("SciMark", "FFT", "inverse", 43, 1, "i", i, i_version);
+        record("", "FFT", "inverse", 41, 1, "i", i, i_version);
         if (!(i < nd)) {
           break;
         }
         data[i] *= norm;
         i++;
         i_version = 2;
-        record("SciMark", "FFT", "inverse", 43, 1, "i", i, i_version);
+        record("", "FFT", "inverse", 41, 1, "i", i, i_version);
       }
     }
   }
@@ -104,7 +123,7 @@ public class FFT {
     int diff_version = -1;
     int nd = data.length;
     nd_version = 2;
-    record("SciMark", "FFT", "test", 52, 1, "nd", nd, nd_version);
+    record("", "FFT", "test", 50, 1, "nd", nd, nd_version);
     // Make duplicate for comparison
     double copy[] = new double[nd];
     System.arraycopy(data, 0, copy, 0, nd);
@@ -114,33 +133,33 @@ public class FFT {
     // Compute RMS difference.
     double diff = 0.0;
     diff_version = 0;
-    record("SciMark", "FFT", "test", 60, 1, "diff", diff, diff_version);
+    record("", "FFT", "test", 58, 1, "diff", diff, diff_version);
     {
       int i_version = 2;
       int i = 0;
       i_version = 3;
-      record("SciMark", "FFT", "test", 61, 1, "i", i, i_version);
+      record("", "FFT", "test", 59, 1, "i", i, i_version);
       while (true) {
         i_version = 4;
-        record("SciMark", "FFT", "test", 61, 1, "i", i, i_version);
+        record("", "FFT", "test", 59, 1, "i", i, i_version);
         nd_version = 3;
-        record("SciMark", "FFT", "test", 61, 1, "nd", nd, nd_version);
+        record("", "FFT", "test", 59, 1, "nd", nd, nd_version);
         if (!(i < nd)) {
           break;
         }
         double d = data[i] - copy[i];
         d_version = 0;
-        record("SciMark", "FFT", "test", 62, 2, "d", d, d_version);
+        record("", "FFT", "test", 60, 2, "d", d, d_version);
         diff += d * d;
         diff_version = 1;
-        record("SciMark", "FFT", "test", 63, 2, "diff", diff, diff_version);
+        record("", "FFT", "test", 61, 2, "diff", diff, diff_version);
         i++;
         i_version = 5;
-        record("SciMark", "FFT", "test", 61, 1, "i", i, i_version);
+        record("", "FFT", "test", 59, 1, "i", i, i_version);
       }
     }
     diff_version = 2;
-    record("SciMark", "FFT", "test", 64, 1, "diff", diff, diff_version);
+    record("", "FFT", "test", 62, 1, "diff", diff, diff_version);
     return Math.sqrt(diff / nd);
   }
 
@@ -150,25 +169,25 @@ public class FFT {
     int n_version = 0;
     int nd = 2 * n;
     nd_version = 4;
-    record("SciMark", "FFT", "makeRandom", 72, 1, "nd", nd, nd_version);
+    record("", "FFT", "makeRandom", 70, 1, "nd", nd, nd_version);
     double data[] = new double[nd];
     {
       int i_version = 5;
       int i = 0;
       i_version = 6;
-      record("SciMark", "FFT", "makeRandom", 74, 1, "i", i, i_version);
+      record("", "FFT", "makeRandom", 72, 1, "i", i, i_version);
       while (true) {
         nd_version = 5;
-        record("SciMark", "FFT", "makeRandom", 74, 1, "nd", nd, nd_version);
+        record("", "FFT", "makeRandom", 72, 1, "nd", nd, nd_version);
         i_version = 7;
-        record("SciMark", "FFT", "makeRandom", 74, 1, "i", i, i_version);
+        record("", "FFT", "makeRandom", 72, 1, "i", i, i_version);
         if (!(i < nd)) {
           break;
         }
         data[i] = Math.random();
         i++;
         i_version = 8;
-        record("SciMark", "FFT", "makeRandom", 74, 1, "i", i, i_version);
+        record("", "FFT", "makeRandom", 72, 1, "i", i, i_version);
       }
     }
     return data;
@@ -181,7 +200,7 @@ public class FFT {
       {
         int n = 1024;
         n_version = 1;
-        record("SciMark", "FFT", "main", 84, 2, "n", n, n_version);
+        record("", "FFT", "main", 82, 2, "n", n, n_version);
         System.out.println("n=" + n + " => RMS Error=" + test(makeRandom(n)));
       }
     }
@@ -189,20 +208,20 @@ public class FFT {
       int i_version = 8;
       int i = 0;
       i_version = 9;
-      record("SciMark", "FFT", "main", 87, 1, "i", i, i_version);
+      record("", "FFT", "main", 85, 1, "i", i, i_version);
       while (true) {
         i_version = 10;
-        record("SciMark", "FFT", "main", 87, 1, "i", i, i_version);
+        record("", "FFT", "main", 85, 1, "i", i, i_version);
         if (!(i < args.length)) {
           break;
         }
         int n = Integer.parseInt(args[i]);
         n_version = 2;
-        record("SciMark", "FFT", "main", 88, 2, "n", n, n_version);
+        record("", "FFT", "main", 86, 2, "n", n, n_version);
         System.out.println("n=" + n + " => RMS Error=" + test(makeRandom(n)));
         i++;
         i_version = 11;
-        record("SciMark", "FFT", "main", 87, 1, "i", i, i_version);
+        record("", "FFT", "main", 85, 1, "i", i, i_version);
       }
     }
   }
@@ -213,27 +232,27 @@ public class FFT {
     int n_version = 2;
     int log = 0;
     log_version = 0;
-    record("SciMark", "FFT", "log2", 95, 1, "log", log, log_version);
+    record("", "FFT", "log2", 93, 1, "log", log, log_version);
     {
       int k_version = -1;
       int k = 1;
       k_version = 0;
-      record("SciMark", "FFT", "log2", 96, 1, "k", k, k_version);
+      record("", "FFT", "log2", 94, 1, "k", k, k_version);
       while (true) {
+        k *= 2;
+        k_version = 2;
+        record("", "FFT", "log2", 94, 1, "k", k, k_version);
         n_version = 3;
-        record("SciMark", "FFT", "log2", 96, 1, "n", n, n_version);
+        record("", "FFT", "log2", 94, 1, "n", n, n_version);
         k_version = 1;
-        record("SciMark", "FFT", "log2", 96, 1, "k", k, k_version);
+        record("", "FFT", "log2", 94, 1, "k", k, k_version);
         if (!(k < n)) {
           break;
         }
         ;
-        k *= 2;
-        k_version = 2;
-        record("SciMark", "FFT", "log2", 96, 1, "k", k, k_version);
         log++;
         log_version = 1;
-        record("SciMark", "FFT", "log2", 96, 1, "log", log, log_version);
+        record("", "FFT", "log2", 94, 1, "log", log, log_version);
       }
     }
     if (n != (1 << log)) {
@@ -265,13 +284,13 @@ public class FFT {
     }
     int n = data.length / 2;
     n_version = 4;
-    record("SciMark", "FFT", "transform_internal", 104, 1, "n", n, n_version);
+    record("", "FFT", "transform_internal", 104, 1, "n", n, n_version);
     if (n == 1) {
       return;
     } // Identity operation!
     int logn = log2(n);
     logn_version = 0;
-    record("SciMark", "FFT", "transform_internal", 106, 1, "logn", logn, logn_version);
+    record("", "FFT", "transform_internal", 107, 1, "logn", logn, logn_version);
 
     /* bit reverse the input data for decimation in time algorithm */
     bitreverse(data);
@@ -283,89 +302,73 @@ public class FFT {
       int dual_version = -1;
       int bit = 0, dual = 1;
       dual_version = 0;
-      record("SciMark", "FFT", "transform_internal", 113, 1, "dual", dual, dual_version);
+      record("", "FFT", "transform_internal", 114, 1, "dual", dual, dual_version);
       bit_version = 0;
-      record("SciMark", "FFT", "transform_internal", 113, 1, "bit", bit, bit_version);
+      record("", "FFT", "transform_internal", 114, 1, "bit", bit, bit_version);
       while (true) {
         bit_version = 1;
-        record("SciMark", "FFT", "transform_internal", 113, 1, "bit", bit, bit_version);
+        record("", "FFT", "transform_internal", 114, 1, "bit", bit, bit_version);
         logn_version = 1;
-        record("SciMark", "FFT", "transform_internal", 113, 1, "logn", logn, logn_version);
+        record("", "FFT", "transform_internal", 114, 1, "logn", logn, logn_version);
         if (!(bit < logn)) {
           break;
         }
         double w_real = 1.0;
         w_real_version = 0;
-        record("SciMark", "FFT", "transform_internal", 114, 2, "w_real", w_real, w_real_version);
+        record("", "FFT", "transform_internal", 115, 2, "w_real", w_real, w_real_version);
         double w_imag = 0.0;
         w_imag_version = 0;
-        record("SciMark", "FFT", "transform_internal", 115, 2, "w_imag", w_imag, w_imag_version);
+        record("", "FFT", "transform_internal", 116, 2, "w_imag", w_imag, w_imag_version);
 
         double theta = 2.0 * direction * Math.PI / (2.0 * (double) dual);
         theta_version = 0;
-        record("SciMark", "FFT", "transform_internal", 117, 2, "theta", theta, theta_version);
+        record("", "FFT", "transform_internal", 118, 2, "theta", theta, theta_version);
         double s = Math.sin(theta);
         s_version = 0;
-        record("SciMark", "FFT", "transform_internal", 118, 2, "s", s, s_version);
+        record("", "FFT", "transform_internal", 119, 2, "s", s, s_version);
         double t = Math.sin(theta / 2.0);
         t_version = 0;
-        record("SciMark", "FFT", "transform_internal", 119, 2, "t", t, t_version);
+        record("", "FFT", "transform_internal", 120, 2, "t", t, t_version);
         double s2 = 2.0 * t * t;
         s2_version = 0;
-        record("SciMark", "FFT", "transform_internal", 120, 2, "s2", s2, s2_version);
+        record("", "FFT", "transform_internal", 121, 2, "s2", s2, s2_version);
 
         /* a = 0 */
         {
           int b_version = -1;
           int b = 0;
           b_version = 0;
-          record("SciMark", "FFT", "transform_internal", 123, 2, "b", b, b_version);
+          record("", "FFT", "transform_internal", 124, 2, "b", b, b_version);
           while (true) {
             b_version = 1;
-            record("SciMark", "FFT", "transform_internal", 123, 2, "b", b, b_version);
+            record("", "FFT", "transform_internal", 124, 2, "b", b, b_version);
             n_version = 5;
-            record("SciMark", "FFT", "transform_internal", 123, 2, "n", n, n_version);
+            record("", "FFT", "transform_internal", 124, 2, "n", n, n_version);
             if (!(b < n)) {
               break;
             }
             int i = 2 * b;
             i_version = 12;
-            record("SciMark", "FFT", "transform_internal", 124, 3, "i", i, i_version);
+            record("", "FFT", "transform_internal", 125, 3, "i", i, i_version);
             int j = 2 * (b + dual);
             j_version = 0;
-            record("SciMark", "FFT", "transform_internal", 125, 3, "j", j, j_version);
+            record("", "FFT", "transform_internal", 126, 3, "j", j, j_version);
 
             double wd_real = data[j];
             wd_real_version = 0;
-            record(
-                "SciMark",
-                "FFT",
-                "transform_internal",
-                127,
-                3,
-                "wd_real",
-                wd_real,
-                wd_real_version);
+            record("", "FFT", "transform_internal", 128, 3, "wd_real", wd_real, wd_real_version);
             double wd_imag = data[j + 1];
             wd_imag_version = 0;
-            record(
-                "SciMark",
-                "FFT",
-                "transform_internal",
-                128,
-                3,
-                "wd_imag",
-                wd_imag,
-                wd_imag_version);
+            record("", "FFT", "transform_internal", 129, 3, "wd_imag", wd_imag, wd_imag_version);
 
             data[j] = data[i] - wd_real;
             data[j + 1] = data[i + 1] - wd_imag;
             data[i] += wd_real;
             data[i + 1] += wd_imag;
+            b += 2 * dual;
+            b_version = 2;
+            record("", "FFT", "transform_internal", 124, 2, "b", b, b_version);
           }
-          b += 2 * dual;
-          b_version = 2;
-          record("SciMark", "FFT", "transform_internal", 123, 2, "b", b, b_version);
         }
 
         /* a = 1 .. (dual-1) */
@@ -373,12 +376,12 @@ public class FFT {
           int a_version = -1;
           int a = 1;
           a_version = 0;
-          record("SciMark", "FFT", "transform_internal", 137, 2, "a", a, a_version);
+          record("", "FFT", "transform_internal", 138, 2, "a", a, a_version);
           while (true) {
             a_version = 1;
-            record("SciMark", "FFT", "transform_internal", 137, 2, "a", a, a_version);
+            record("", "FFT", "transform_internal", 138, 2, "a", a, a_version);
             dual_version = 1;
-            record("SciMark", "FFT", "transform_internal", 137, 2, "dual", dual, dual_version);
+            record("", "FFT", "transform_internal", 138, 2, "dual", dual, dual_version);
             if (!(a < dual)) {
               break;
             }
@@ -387,125 +390,81 @@ public class FFT {
               double tmp_real = w_real - s * w_imag - s2 * w_real;
               tmp_real_version = 0;
               record(
-                  "SciMark",
-                  "FFT",
-                  "transform_internal",
-                  140,
-                  4,
-                  "tmp_real",
-                  tmp_real,
-                  tmp_real_version);
+                  "", "FFT", "transform_internal", 141, 4, "tmp_real", tmp_real, tmp_real_version);
               double tmp_imag = w_imag + s * w_real - s2 * w_imag;
               tmp_imag_version = 0;
               record(
-                  "SciMark",
-                  "FFT",
-                  "transform_internal",
-                  141,
-                  4,
-                  "tmp_imag",
-                  tmp_imag,
-                  tmp_imag_version);
+                  "", "FFT", "transform_internal", 142, 4, "tmp_imag", tmp_imag, tmp_imag_version);
               w_real = tmp_real;
               w_real_version = 1;
-              record(
-                  "SciMark", "FFT", "transform_internal", 142, 4, "w_real", w_real, w_real_version);
+              record("", "FFT", "transform_internal", 143, 4, "w_real", w_real, w_real_version);
               w_imag = tmp_imag;
               w_imag_version = 1;
-              record(
-                  "SciMark", "FFT", "transform_internal", 143, 4, "w_imag", w_imag, w_imag_version);
+              record("", "FFT", "transform_internal", 144, 4, "w_imag", w_imag, w_imag_version);
             }
             {
               int b_version = 2;
               int b = 0;
               b_version = 3;
-              record("SciMark", "FFT", "transform_internal", 145, 3, "b", b, b_version);
+              record("", "FFT", "transform_internal", 146, 3, "b", b, b_version);
               while (true) {
                 b_version = 4;
-                record("SciMark", "FFT", "transform_internal", 145, 3, "b", b, b_version);
+                record("", "FFT", "transform_internal", 146, 3, "b", b, b_version);
                 n_version = 6;
-                record("SciMark", "FFT", "transform_internal", 145, 3, "n", n, n_version);
+                record("", "FFT", "transform_internal", 146, 3, "n", n, n_version);
                 if (!(b < n)) {
                   break;
                 }
                 int i = 2 * (b + a);
                 i_version = 13;
-                record("SciMark", "FFT", "transform_internal", 146, 4, "i", i, i_version);
+                record("", "FFT", "transform_internal", 147, 4, "i", i, i_version);
                 int j = 2 * (b + a + dual);
                 j_version = 1;
-                record("SciMark", "FFT", "transform_internal", 147, 4, "j", j, j_version);
+                record("", "FFT", "transform_internal", 148, 4, "j", j, j_version);
 
                 double z1_real = data[j];
                 z1_real_version = 0;
                 record(
-                    "SciMark",
-                    "FFT",
-                    "transform_internal",
-                    149,
-                    4,
-                    "z1_real",
-                    z1_real,
-                    z1_real_version);
+                    "", "FFT", "transform_internal", 150, 4, "z1_real", z1_real, z1_real_version);
                 double z1_imag = data[j + 1];
                 z1_imag_version = 0;
                 record(
-                    "SciMark",
-                    "FFT",
-                    "transform_internal",
-                    150,
-                    4,
-                    "z1_imag",
-                    z1_imag,
-                    z1_imag_version);
+                    "", "FFT", "transform_internal", 151, 4, "z1_imag", z1_imag, z1_imag_version);
 
                 double wd_real = w_real * z1_real - w_imag * z1_imag;
                 wd_real_version = 1;
                 record(
-                    "SciMark",
-                    "FFT",
-                    "transform_internal",
-                    152,
-                    4,
-                    "wd_real",
-                    wd_real,
-                    wd_real_version);
+                    "", "FFT", "transform_internal", 153, 4, "wd_real", wd_real, wd_real_version);
                 double wd_imag = w_real * z1_imag + w_imag * z1_real;
                 wd_imag_version = 1;
                 record(
-                    "SciMark",
-                    "FFT",
-                    "transform_internal",
-                    153,
-                    4,
-                    "wd_imag",
-                    wd_imag,
-                    wd_imag_version);
+                    "", "FFT", "transform_internal", 154, 4, "wd_imag", wd_imag, wd_imag_version);
 
                 data[j] = data[i] - wd_real;
                 data[j + 1] = data[i + 1] - wd_imag;
                 data[i] += wd_real;
                 data[i + 1] += wd_imag;
+                b += 2 * dual;
+                b_version = 5;
+                record("", "FFT", "transform_internal", 146, 3, "b", b, b_version);
               }
-              b += 2 * dual;
-              b_version = 5;
-              record("SciMark", "FFT", "transform_internal", 145, 3, "b", b, b_version);
             }
             a++;
             a_version = 2;
-            record("SciMark", "FFT", "transform_internal", 137, 2, "a", a, a_version);
+            record("", "FFT", "transform_internal", 138, 2, "a", a, a_version);
           }
         }
         w_real_version = 2;
-        record("SciMark", "FFT", "transform_internal", 160, 2, "w_real", w_real, w_real_version);
+        record("", "FFT", "transform_internal", 161, 2, "w_real", w_real, w_real_version);
         w_imag_version = 2;
-        record("SciMark", "FFT", "transform_internal", 160, 2, "w_imag", w_imag, w_imag_version);
+        record("", "FFT", "transform_internal", 161, 2, "w_imag", w_imag, w_imag_version);
+        dual *= 2;
+        dual_version = 2;
+        record("", "FFT", "transform_internal", 114, 1, "dual", dual, dual_version);
         bit++;
         bit_version = 2;
-        record("SciMark", "FFT", "transform_internal", 113, 1, "bit", bit, bit_version);
+        record("", "FFT", "transform_internal", 114, 1, "bit", bit, bit_version);
       }
-      dual *= 2;
-      dual_version = 2;
-      record("SciMark", "FFT", "transform_internal", 113, 1, "dual", dual, dual_version);
     }
   }
 
@@ -522,22 +481,22 @@ public class FFT {
     /* This is the Goldrader bit-reversal algorithm */
     int n = data.length / 2;
     n_version = 7;
-    record("SciMark", "FFT", "bitreverse", 167, 1, "n", n, n_version);
+    record("", "FFT", "bitreverse", 167, 1, "n", n, n_version);
     int nm1 = n - 1;
     nm1_version = 0;
-    record("SciMark", "FFT", "bitreverse", 168, 1, "nm1", nm1, nm1_version);
+    record("", "FFT", "bitreverse", 168, 1, "nm1", nm1, nm1_version);
     int i = 0;
     i_version = 14;
-    record("SciMark", "FFT", "bitreverse", 169, 1, "i", i, i_version);
+    record("", "FFT", "bitreverse", 169, 1, "i", i, i_version);
     int j = 0;
     j_version = 2;
-    record("SciMark", "FFT", "bitreverse", 170, 1, "j", j, j_version);
+    record("", "FFT", "bitreverse", 170, 1, "j", j, j_version);
     {
       while (true) {
         i_version = 15;
-        record("SciMark", "FFT", "bitreverse", 171, 1, "i", i, i_version);
+        record("", "FFT", "bitreverse", 171, 1, "i", i, i_version);
         nm1_version = 1;
-        record("SciMark", "FFT", "bitreverse", 171, 1, "nm1", nm1, nm1_version);
+        record("", "FFT", "bitreverse", 171, 1, "nm1", nm1, nm1_version);
         if (!(i < nm1)) {
           break;
         }
@@ -545,26 +504,26 @@ public class FFT {
         // int ii = 2*i;
         int ii = i << 1;
         ii_version = 0;
-        record("SciMark", "FFT", "bitreverse", 174, 2, "ii", ii, ii_version);
+        record("", "FFT", "bitreverse", 174, 2, "ii", ii, ii_version);
 
         // int jj = 2*j;
         int jj = j << 1;
         jj_version = 0;
-        record("SciMark", "FFT", "bitreverse", 177, 2, "jj", jj, jj_version);
+        record("", "FFT", "bitreverse", 177, 2, "jj", jj, jj_version);
 
         // int k = n / 2 ;
         int k = n >> 1;
         k_version = 3;
-        record("SciMark", "FFT", "bitreverse", 180, 2, "k", k, k_version);
+        record("", "FFT", "bitreverse", 180, 2, "k", k, k_version);
 
         if (i < j) {
           {
             double tmp_real = data[ii];
             tmp_real_version = 1;
-            record("SciMark", "FFT", "bitreverse", 183, 3, "tmp_real", tmp_real, tmp_real_version);
+            record("", "FFT", "bitreverse", 183, 3, "tmp_real", tmp_real, tmp_real_version);
             double tmp_imag = data[ii + 1];
             tmp_imag_version = 1;
-            record("SciMark", "FFT", "bitreverse", 184, 3, "tmp_imag", tmp_imag, tmp_imag_version);
+            record("", "FFT", "bitreverse", 184, 3, "tmp_imag", tmp_imag, tmp_imag_version);
             data[ii] = data[jj];
             data[ii + 1] = data[jj + 1];
             data[jj] = tmp_real;
@@ -574,35 +533,35 @@ public class FFT {
 
         while (true) {
           k_version = 5;
-          record("SciMark", "FFT", "bitreverse", 191, 2, "k", k, k_version);
+          record("", "FFT", "bitreverse", 191, 2, "k", k, k_version);
           j_version = 4;
-          record("SciMark", "FFT", "bitreverse", 191, 2, "j", j, j_version);
+          record("", "FFT", "bitreverse", 191, 2, "j", j, j_version);
           if (!(k <= j)) {
             break;
           }
           // j = j - k ;
           j -= k;
           j_version = 3;
-          record("SciMark", "FFT", "bitreverse", 193, 3, "j", j, j_version);
+          record("", "FFT", "bitreverse", 193, 3, "j", j, j_version);
 
           // k = k / 2 ;
           k >>= 1;
           k_version = 4;
-          record("SciMark", "FFT", "bitreverse", 196, 3, "k", k, k_version);
+          record("", "FFT", "bitreverse", 196, 3, "k", k, k_version);
         }
         j_version = 5;
-        record("SciMark", "FFT", "bitreverse", 197, 2, "j", j, j_version);
+        record("", "FFT", "bitreverse", 197, 2, "j", j, j_version);
         k_version = 6;
-        record("SciMark", "FFT", "bitreverse", 197, 2, "k", k, k_version);
+        record("", "FFT", "bitreverse", 197, 2, "k", k, k_version);
         j += k;
         j_version = 6;
-        record("SciMark", "FFT", "bitreverse", 198, 2, "j", j, j_version);
+        record("", "FFT", "bitreverse", 198, 2, "j", j, j_version);
         i++;
         i_version = 16;
-        record("SciMark", "FFT", "bitreverse", 171, 1, "i", i, i_version);
+        record("", "FFT", "bitreverse", 171, 1, "i", i, i_version);
       }
     }
     j_version = 7;
-    record("SciMark", "FFT", "bitreverse", 199, 1, "j", j, j_version);
+    record("", "FFT", "bitreverse", 199, 1, "j", j, j_version);
   }
 }

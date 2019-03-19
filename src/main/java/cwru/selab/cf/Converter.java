@@ -293,12 +293,14 @@ public class Converter extends Java8BaseListener {
   public void enterNormalClassDeclaration(Java8Parser.NormalClassDeclarationContext ctx) {
     String className = ctx.getChild(2).getText();
     this.className = className;
+    rewriter.insertBefore(ctx.getStart(),
+        "import java.io.BufferedWriter;import java.io.FileWriter;import java.io.IOException;");
   }
 
   @Override
   public void enterClassBody(Java8Parser.ClassBodyContext ctx) {
     rewriter.insertAfter(ctx.getStart(),
-        "public static void record(String packageName,String clazz,String method,int line,int staticScope,String variableName,Object value,int version) {System.out.println(String.format(\"package: %s, class: %s, method: %s, line: %d, static-scope: %d, variable: %s, value: %s, version: %d\",packageName,clazz,method,line,staticScope,variableName,value.toString(),version));}");
+        "public static void record(String packageName, String clazz, String method, int line, int staticScope,String variableName, Object value, int version) {BufferedWriter writer = null;try {writer = new BufferedWriter(new FileWriter(clazz + \"_output.txt\", true));} catch (IOException e) {System.out.println(e.getMessage());}try {writer.append(packageName + \",\" + clazz + \",\" + method + \",\" + line + \",\" + staticScope + \",\" + variableName + \",\"+ version + \",\" + value + \"\\n\");writer.close();} catch (Exception e) {System.out.println(e.getMessage());}}");
   }
 
   HashMap<String, Integer> subscriptsBeforeMethod = new HashMap<>();
@@ -999,13 +1001,13 @@ public class Converter extends Java8BaseListener {
         Java8Parser.AssignmentContext assignmentContext = (Java8Parser.AssignmentContext) expressionContext;
         String variable = assignmentContext.leftHandSide().getText();
         int lineNumber = assignmentContext.getStart().getLine();
-        rewriter.insertAfter(ctx.getStop(), assignmentContext.getText() + ";");
+        insertRecordStatementBefore(ctx.getStop(), variable, lineNumber);
+        insertVersionUpdateBefore(ctx.getStop(), variable);
+        rewriter.insertBefore(ctx.getStop(), assignmentContext.getText() + ";");
 
         ArrayList<String> confounders = new ArrayList<>();
         if (variableSubscripts.containsKey(variable))
           confounders.add(variable + "_" + variableSubscripts.get(variable));
-        insertVersionUpdateAfter(ctx.getStop(), variable);
-        insertRecordStatementAfter(ctx.getStop(), variable, lineNumber);
         causalMap.put(variable + "_" + variableSubscripts.get(variable), new ArrayList<String>());
         causalMap.get(variable + "_" + variableSubscripts.get(variable)).addAll(confounders);
 
