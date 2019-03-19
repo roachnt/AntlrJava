@@ -41,7 +41,7 @@ public class Driver {
 
     walker.walk(converter, tree);
     String formattedSource = "";
-    BufferedWriter writer = new BufferedWriter(new FileWriter("out.java"));
+    BufferedWriter writer = new BufferedWriter(new FileWriter(file.getName()));
     try {
       formattedSource = new Formatter().formatSource(rewriter.getText());
     } catch (Exception e) {
