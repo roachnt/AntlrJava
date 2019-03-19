@@ -12,11 +12,15 @@ import java.util.HashSet;
 import java.io.OutputStream;
 import java.io.FileOutputStream;
 import java.io.OutputStreamWriter;
+import java.io.File;
+import org.apache.commons.io.FilenameUtils;
 
 public class Driver {
   public static void main(String[] args) throws IOException {
     // create a CharStream that reads from a file at path in the first arg
     CharStream input = CharStreams.fromFileName(args[0]);
+    File file = new File(args[0]);
+    String fileNameWithOutExt = FilenameUtils.removeExtension(file.getName());
 
     // create a lexer that feeds off of the input CharStream
     Java8Lexer lexer = new Java8Lexer(input);
@@ -57,8 +61,8 @@ public class Driver {
     System.out.println(formattedSource);
     System.out.println(converter.causalMap);
     try {
-      genRForCFmeansRF("RforCFmeansRF_TestShimple.R", "TestShimple_fault_binerrs_all", "TestShimple_fault_binerrs", "Y",
-          converter.getCausalMap());
+      genRForCFmeansRF("RforCFmeansRF_" + fileNameWithOutExt + ".R", fileNameWithOutExt + "_fault_binerrs_all",
+          fileNameWithOutExt + "_fault_binerrs", "Y", converter.getCausalMap());
     } catch (IOException e) {
       e.printStackTrace();
     }

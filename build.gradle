@@ -41,6 +41,8 @@ dependencies {
 
     // Code formatter
     compile 'com.google.googlejavaformat:google-java-format:1.6'
+
+    compile "commons-io:commons-io:+"
 }
 
 
