@@ -6,9 +6,9 @@ import java.io.IOException;
 import org.antlr.v4.runtime.*;
 import org.antlr.v4.runtime.tree.*;
 import com.google.googlejavaformat.java.Formatter;
-import java.util.Map;
+import java.util.HashMap;
 import java.util.List;
-import java.util.Set;
+import java.util.HashSet;
 import java.io.OutputStream;
 import java.io.FileOutputStream;
 import java.io.OutputStreamWriter;
@@ -56,11 +56,17 @@ public class Driver {
     // }
     System.out.println(formattedSource);
     System.out.println(converter.causalMap);
+    try {
+      genRForCFmeansRF("RforCFmeansRF_TestShimple.R", "TestShimple_fault_binerrs_all", "TestShimple_fault_binerrs", "Y",
+          converter.getCausalMap());
+    } catch (IOException e) {
+      e.printStackTrace();
+    }
     // System.out.println(tree.toStringTree(parser)); // print LISP-style tree
   }
 
   private static void genRForCFmeansRF(String RFileName, String varFrameName, String prefix, String outName,
-      Map<String, Set<String>> covariant) throws IOException {
+      HashMap<String, HashSet<String>> covariant) throws IOException {
 
     OutputStream out = new FileOutputStream(RFileName);
     BufferedWriter writer = new BufferedWriter(new OutputStreamWriter(out));
@@ -81,7 +87,7 @@ public class Driver {
 
       //            // for tfn
       writer.write(tfn + " <- data.frame(" + outName + "=" + vfn + "$" + outName + ", " + t + "=" + vfn + "$" + t);
-      Set<String> set = covariant.get(t);
+      HashSet<String> set = covariant.get(t);
       for (String c : set) {
         writer.write(", " + c + "=" + vfn + "$" + c);
       }
