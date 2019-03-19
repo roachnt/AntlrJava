@@ -1001,9 +1001,16 @@ public class Converter extends Java8BaseListener {
         Java8Parser.AssignmentContext assignmentContext = (Java8Parser.AssignmentContext) expressionContext;
         String variable = assignmentContext.leftHandSide().getText();
         int lineNumber = assignmentContext.getStart().getLine();
-        insertRecordStatementBefore(ctx.getStop(), variable, lineNumber);
-        insertVersionUpdateBefore(ctx.getStop(), variable);
-        rewriter.insertBefore(ctx.getStop(), assignmentContext.getText() + ";");
+
+        if (ctx.statement().statementWithoutTrailingSubstatement().block() == null) {
+          rewriter.insertAfter(ctx.statement().getStop(), assignmentContext.getText() + ";");
+          insertVersionUpdateAfter(ctx.statement().getStop(), variable);
+          insertRecordStatementAfter(ctx.statement().getStop(), variable, lineNumber);
+        } else {
+          insertRecordStatementBefore(ctx.statement().getStop(), variable, lineNumber);
+          insertVersionUpdateBefore(ctx.statement().getStop(), variable);
+          rewriter.insertBefore(ctx.statement().getStop(), assignmentContext.getText() + ";");
+        }
 
         ArrayList<String> confounders = new ArrayList<>();
         if (variableSubscripts.containsKey(variable))
@@ -1094,9 +1101,10 @@ public class Converter extends Java8BaseListener {
         Java8Parser.AssignmentContext assignmentContext = (Java8Parser.AssignmentContext) expressionContext;
         String variable = assignmentContext.leftHandSide().getText();
         int lineNumber = assignmentContext.getStart().getLine();
-        rewriter.insertAfter(ctx.getStop(), assignmentContext.getText() + ";");
-        insertVersionUpdateAfter(ctx.getStop(), variable);
-        insertRecordStatementAfter(ctx.getStop(), variable, lineNumber);
+        insertRecordStatementBefore(ctx.getStop(), variable, lineNumber);
+        insertVersionUpdateBefore(ctx.getStop(), variable);
+        rewriter.insertBefore(ctx.getStop(), assignmentContext.getText() + ";");
+
         HashSet<String> postFixAlteredVariables = getIncrementAndDecrementVariablesFromAssignment(assignmentContext);
         for (String alteredVariable : postFixAlteredVariables) {
           insertVersionUpdateAfter(ctx.getStop(), alteredVariable);

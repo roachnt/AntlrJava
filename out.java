@@ -239,9 +239,6 @@ public class FFT {
       k_version = 0;
       record("", "FFT", "log2", 94, 1, "k", k, k_version);
       while (true) {
-        k *= 2;
-        k_version = 2;
-        record("", "FFT", "log2", 94, 1, "k", k, k_version);
         n_version = 3;
         record("", "FFT", "log2", 94, 1, "n", n, n_version);
         k_version = 1;
@@ -250,6 +247,9 @@ public class FFT {
           break;
         }
         ;
+        k *= 2;
+        k_version = 2;
+        record("", "FFT", "log2", 94, 1, "k", k, k_version);
         log++;
         log_version = 1;
         record("", "FFT", "log2", 94, 1, "log", log, log_version);
