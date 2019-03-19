@@ -6,6 +6,12 @@ import java.io.IOException;
 import org.antlr.v4.runtime.*;
 import org.antlr.v4.runtime.tree.*;
 import com.google.googlejavaformat.java.Formatter;
+import java.util.Map;
+import java.util.List;
+import java.util.Set;
+import java.io.OutputStream;
+import java.io.FileOutputStream;
+import java.io.OutputStreamWriter;
 
 public class Driver {
   public static void main(String[] args) throws IOException {
@@ -51,5 +57,58 @@ public class Driver {
     System.out.println(formattedSource);
     System.out.println(converter.causalMap);
     // System.out.println(tree.toStringTree(parser)); // print LISP-style tree
+  }
+
+  private static void genRForCFmeansRF(String RFileName, String varFrameName, String prefix, String outName,
+      Map<String, Set<String>> covariant) throws IOException {
+
+    OutputStream out = new FileOutputStream(RFileName);
+    BufferedWriter writer = new BufferedWriter(new OutputStreamWriter(out));
+
+    writer.write("genCFmeansRF_" + prefix + " <- function() {\n\n");
+    // for RF
+    writer.write("results <- data.frame(row.names=seq(1, 10))\n\n");
+    // for esp
+    //        writer.write("results <- data.frame(row.names = \"mean\")\n\n");
+
+    for (String t : covariant.keySet()) {
+      //        for (Value t : treatNames){
+      String vfn = varFrameName;
+      // for confounder
+      String tfn = prefix + "_" + t + "_treat_df";
+      // for no confounder
+      String tfn_nocnfd = prefix + "_" + t + "_treat_nocnfd_df";
+
+      //            // for tfn
+      writer.write(tfn + " <- data.frame(" + outName + "=" + vfn + "$" + outName + ", " + t + "=" + vfn + "$" + t);
+      Set<String> set = covariant.get(t);
+      for (String c : set) {
+        writer.write(", " + c + "=" + vfn + "$" + c);
+      }
+
+      // for tfn_nocnfd
+      //            writer.write(tfn_nocnfd + " <- data.frame(" + outName + "=" + vfn + "$" + outName + ", " + t + "=" + vfn + "$" + t);
+
+      writer.write(")\n");
+
+      // to remove NA
+      //            writer.write(tfn + " <- " + tfn + "[complete.cases(" + tfn + "),]" + '\n');
+
+      // Only treatement, no confounder (ESP)
+      //            writer.write("results[[\"" + t + "\"]] <- CFmeansForESP(" + tfn_nocnfd + ", \"" + outName + "\", \"" + t + "\"");
+
+      // For random forest
+      writer
+          .write("results[[\"" + t + "\"]] <- CFmeansForDecileBinsRF(" + tfn + ", \"" + outName + "\", \"" + t + "\"");
+
+      // For LM and LASSO
+      //            writer.write("results[[\"" + t + "\"]] <- CFmeansForDecileBinsLM(" + tfn + ", \"" + outName + "\", \"" + t + "\"");
+
+      writer.write(")\n\n");
+    }
+    writer.write("return(results)\n\n");
+    writer.write("}\n");
+    writer.flush();
+    writer.close();
   }
 }

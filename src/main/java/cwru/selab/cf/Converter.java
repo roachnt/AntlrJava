@@ -1102,14 +1102,14 @@ public class Converter extends Java8BaseListener {
         String variable = assignmentContext.leftHandSide().getText();
         int lineNumber = assignmentContext.getStart().getLine();
 
-        if (ctx.statement().statementWithoutTrailingSubstatement().block() == null) {
-          rewriter.insertAfter(ctx.statement().getStop(), assignmentContext.getText() + ";");
-          insertVersionUpdateAfter(ctx.statement().getStop(), variable);
-          insertRecordStatementAfter(ctx.statement().getStop(), variable, lineNumber);
+        if (ctx.statementNoShortIf().statementWithoutTrailingSubstatement().block() == null) {
+          rewriter.insertAfter(ctx.statementNoShortIf().getStop(), assignmentContext.getText() + ";");
+          insertVersionUpdateAfter(ctx.statementNoShortIf().getStop(), variable);
+          insertRecordStatementAfter(ctx.statementNoShortIf().getStop(), variable, lineNumber);
         } else {
-          insertRecordStatementBefore(ctx.statement().getStop(), variable, lineNumber);
-          insertVersionUpdateBefore(ctx.statement().getStop(), variable);
-          rewriter.insertBefore(ctx.statement().getStop(), assignmentContext.getText() + ";");
+          insertRecordStatementBefore(ctx.statementNoShortIf().getStop(), variable, lineNumber);
+          insertVersionUpdateBefore(ctx.statementNoShortIf().getStop(), variable);
+          rewriter.insertBefore(ctx.statementNoShortIf().getStop(), assignmentContext.getText() + ";");
         }
 
         HashSet<String> postFixAlteredVariables = getIncrementAndDecrementVariablesFromAssignment(assignmentContext);
