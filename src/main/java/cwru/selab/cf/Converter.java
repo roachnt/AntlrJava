@@ -324,8 +324,40 @@ public class Converter extends Java8BaseListener {
   // When exiting a method, initilize all variables (both from parameters and in body)
   @Override
   public void exitMethodBody(Java8Parser.MethodBodyContext ctx) {
-    System.out.println(subscriptsBeforeMethod);
-    System.out.println(variableSubscripts);
+    System.out.println(currentMethodName);
+    System.out.println(allLocalVariables);
+    for (String variable : allLocalVariables) {
+      if (!methodParameters.contains(variable)) {
+        if (subscriptsBeforeMethod.containsKey(variable))
+          rewriter.insertAfter(ctx.getStart(),
+              "int " + variable + "_version" + " = " + subscriptsBeforeMethod.get(variable) + ";");
+        else
+          rewriter.insertAfter(ctx.getStart(), "int " + variable + "_version" + " = -1;");
+      }
+    }
+    rewriter.insertAfter(ctx.getStart(), initializeFormalParams);
+    currentMethodName = "";
+    initializeFormalParams = "";
+    allLocalVariables.clear();
+    methodParameters.clear();
+  }
+
+  @Override
+  public void enterConstructorBody(Java8Parser.ConstructorBodyContext ctx) {
+    subscriptsBeforeMethod.putAll(variableSubscripts);
+    for (String variable : methodParameters) {
+      int subscript = currentVariableSubscriptMap.get(variable);
+      if (variableSubscripts.containsKey(variable))
+        initializeFormalParams += "int " + variable + "_version" + " = " + variableSubscripts.get(variable) + ";";
+      else
+        initializeFormalParams += "int " + variable + "_version" + " = 0" + ";";
+    }
+  }
+
+  @Override
+  public void exitConstructorBody(Java8Parser.ConstructorBodyContext ctx) {
+    System.out.println(currentMethodName);
+    System.out.println(allLocalVariables);
     for (String variable : allLocalVariables) {
       if (!methodParameters.contains(variable)) {
         if (subscriptsBeforeMethod.containsKey(variable))
