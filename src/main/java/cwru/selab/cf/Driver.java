@@ -11,8 +11,13 @@ import java.util.List;
 import java.util.HashSet;
 import java.io.OutputStream;
 import java.io.FileOutputStream;
+import java.io.FileInputStream;
 import java.io.OutputStreamWriter;
 import java.io.File;
+import java.nio.file.Files;
+import java.nio.file.Paths;
+import java.nio.file.StandardCopyOption;
+
 import org.apache.commons.io.FilenameUtils;
 
 public class Driver {
@@ -22,6 +27,8 @@ public class Driver {
     File file = new File(args[0]);
     String fileNameWithOutExt = FilenameUtils.removeExtension(file.getName());
     new File("output/" + fileNameWithOutExt).mkdir();
+    Files.copy(Paths.get("/Users/nicklausroach/Research/Thesis/AntlrJava/src/main/java/cwru/selab/cf/Fluky.java"),
+        Paths.get("output/" + fileNameWithOutExt + "/Fluky.java"), StandardCopyOption.REPLACE_EXISTING);
 
     // create a lexer that feeds off of the input CharStream
     Java8Lexer lexer = new Java8Lexer(input);
