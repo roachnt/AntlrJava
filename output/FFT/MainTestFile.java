@@ -6,12 +6,15 @@ public class MainTestFile {
   public static void main(String[] args) throws IOException {
 
     FileWriter writer = new FileWriter("outY.txt");
-
-    int[] Y = new int[2000];
-
+    PrintWriter pw = new PrintWriter("output");
+    pw.close();
     FileWriter writerOut = new FileWriter("output", true);
 
-    for (int i = 0; i < 2000; i++) {
+    int numTrials = 2000;
+
+    int[] Y = new int[numTrials];
+
+    for (int i = 0; i < numTrials; i++) {
 
       writerOut.write("===============start of a new class===============" + "\n");
       writerOut.flush();
@@ -56,5 +59,6 @@ public class MainTestFile {
       writer.flush();
     }
     writer.close();
+    StructuredDataCollector.structureData("output");
   }
 }

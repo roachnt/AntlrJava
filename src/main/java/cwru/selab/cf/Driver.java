@@ -33,6 +33,9 @@ public class Driver {
         StandardCopyOption.REPLACE_EXISTING);
     Files.copy(Paths.get("resources/MainTestFile.java"),
         Paths.get("output/" + fileNameWithOutExt + "/MainTestFile.java"), StandardCopyOption.REPLACE_EXISTING);
+    Files.copy(Paths.get("resources/StructuredDataCollector.java"),
+        Paths.get("output/" + fileNameWithOutExt + "/StructuredDataCollector.java"),
+        StandardCopyOption.REPLACE_EXISTING);
 
     // create a lexer that feeds off of the input CharStream
     Java8Lexer lexer = new Java8Lexer(input);
