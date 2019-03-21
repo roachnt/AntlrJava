@@ -27,8 +27,10 @@ public class Driver {
     File file = new File(args[0]);
     String fileNameWithOutExt = FilenameUtils.removeExtension(file.getName());
     new File("output/" + fileNameWithOutExt).mkdir();
-    Files.copy(Paths.get("/Users/nicklausroach/Research/Thesis/AntlrJava/src/main/java/cwru/selab/cf/Fluky.java"),
-        Paths.get("output/" + fileNameWithOutExt + "/Fluky.java"), StandardCopyOption.REPLACE_EXISTING);
+    Files.copy(Paths.get("resources/Fluky.java"), Paths.get("output/" + fileNameWithOutExt + "/Fluky.java"),
+        StandardCopyOption.REPLACE_EXISTING);
+    Files.copy(Paths.get("resources/MainTestFile.java"),
+        Paths.get("output/" + fileNameWithOutExt + "/MainTestFile.java"), StandardCopyOption.REPLACE_EXISTING);
 
     // create a lexer that feeds off of the input CharStream
     Java8Lexer lexer = new Java8Lexer(input);
@@ -50,6 +52,8 @@ public class Driver {
     walker.walk(converter, tree);
     String formattedSource = "";
     BufferedWriter writer = new BufferedWriter(new FileWriter("output/" + fileNameWithOutExt + "/" + file.getName()));
+    BufferedWriter writerFaulty = new BufferedWriter(
+        new FileWriter("output/" + fileNameWithOutExt + "/" + fileNameWithOutExt + "Fault.java"));
     try {
       formattedSource = new Formatter().formatSource(rewriter.getText());
     } catch (Exception e) {
@@ -57,15 +61,15 @@ public class Driver {
       System.out.println(e.getMessage());
       writer.write(rewriter.getText());
       writer.close();
+      writerFaulty.write(rewriter.getText());
+      writerFaulty.close();
       return;
     }
     writer.write(formattedSource);
     writer.close();
-    // for (int i = 0; i < parser.getVocabulary().getMaxTokenType(); i++) {
-    //   System.out.println(
-    //       i + " = " + parser.getVocabulary().getDisplayName(i) + ", " +
-    // parser.getVocabulary().getLiteralName(i));
-    // }
+    writerFaulty.write(formattedSource);
+    writerFaulty.close();
+
     System.out.println(formattedSource);
     System.out.println(converter.causalMap);
     try {

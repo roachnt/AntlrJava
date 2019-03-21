@@ -7,20 +7,20 @@ public class MainTestFile {
 
   public static void main(String[] args) throws IOException {
 
-    FileWriter writer = new FileWriter("/Users/Nebula/IdeaProjects/SootTest2/outY.txt");
+    FileWriter writer = new FileWriter("outY.txt");
 
     int[] Y = new int[2000];
 
-    FileWriter writerOut = new FileWriter("/Users/Nebula/IdeaProjects/SootTest2/output", true);
+    FileWriter writerOut = new FileWriter("output", true);
 
     for (int i = 0; i < 2000; i++) {
 
       writerOut.write("===============start of a new class===============" + "\n");
       writerOut.flush();
 
-      double[] data = FFT.makeRandom(64);
-      double[] dataFault = new double[data.length];
-      System.arraycopy(data, 0, dataFault, 0, data.length);
+      // double[] data = FFT.makeRandom(64);
+      // double[] dataFault = new double[data.length];
+      // System.arraycopy(data, 0, dataFault, 0, data.length);
 
       //            System.out.println("data before bitreverse, FFT: " + FFT.test(data));
       //            System.out.println("data before bitreverse, FFTFault: " + FFTFault.test(dataFault));
@@ -30,13 +30,13 @@ public class MainTestFile {
       //            FFTFault.bitreverse(dataFault);
 
       // For transform
-      FFT.transform(data);
-      FFTFault.transform(dataFault);
+      // FFT.transform(data);
+      // FFTFault.transform(dataFault);
 
-      for (int j = 0; j < data.length; j++) {
-        if (data[j] != dataFault[j])
-          Y[i] = 1;
-      }
+      // for (int j = 0; j < data.length; j++) {
+      //   if (data[j] != dataFault[j])
+      //     Y[i] = 1;
+      // }
 
       //            double result = FFT.test(data);
       //            double resultFault = FFTFault.test(dataFault);
