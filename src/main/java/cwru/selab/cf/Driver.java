@@ -21,6 +21,7 @@ public class Driver {
     CharStream input = CharStreams.fromFileName(args[0]);
     File file = new File(args[0]);
     String fileNameWithOutExt = FilenameUtils.removeExtension(file.getName());
+    new File("output/" + fileNameWithOutExt).mkdir();
 
     // create a lexer that feeds off of the input CharStream
     Java8Lexer lexer = new Java8Lexer(input);
@@ -41,7 +42,7 @@ public class Driver {
 
     walker.walk(converter, tree);
     String formattedSource = "";
-    BufferedWriter writer = new BufferedWriter(new FileWriter(file.getName()));
+    BufferedWriter writer = new BufferedWriter(new FileWriter("output/" + fileNameWithOutExt + "/" + file.getName()));
     try {
       formattedSource = new Formatter().formatSource(rewriter.getText());
     } catch (Exception e) {
@@ -61,8 +62,9 @@ public class Driver {
     System.out.println(formattedSource);
     System.out.println(converter.causalMap);
     try {
-      genRForCFmeansRF("RforCFmeansRF_" + fileNameWithOutExt + ".R", fileNameWithOutExt + "_fault_binerrs_all",
-          fileNameWithOutExt + "_fault_binerrs", "Y", converter.getCausalMap());
+      genRForCFmeansRF("output/" + fileNameWithOutExt + "/" + "RforCFmeansRF_" + fileNameWithOutExt + ".R",
+          fileNameWithOutExt + "_fault_binerrs_all", fileNameWithOutExt + "_fault_binerrs", "Y",
+          converter.getCausalMap());
     } catch (IOException e) {
       e.printStackTrace();
     }
