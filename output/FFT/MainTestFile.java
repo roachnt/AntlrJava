@@ -8,7 +8,7 @@ public class MainTestFile {
 
     FileWriter writer = new FileWriter("outY.txt");
 
-    // Change file name accordingly
+    // Change file name to the same as the file being produced by the instrumented program
     String dataFileName = "FFT_output.txt";
 
     PrintWriter pw = new PrintWriter(dataFileName);

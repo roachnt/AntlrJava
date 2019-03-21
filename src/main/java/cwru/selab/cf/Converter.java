@@ -308,8 +308,8 @@ public class Converter extends Java8BaseListener {
     rewriter.insertAfter(ctx.getStart(),
         "public static void record(String packageName, String clazz, String method, int line, int staticScope,String variableName, Object value, int version) {BufferedWriter writer = null;try {writer = new BufferedWriter(new FileWriter(clazz + \"_output.txt\", true));} catch (IOException e) {System.out.println(e.getMessage());}try {writer.append(clazz + \",\" + method + \",\" + line + \",\" + staticScope + \",\" + variableName + \",\"+ version + \",\" + value + \"\\n\");writer.close();} catch (Exception e) {System.out.println(e.getMessage());}}");
 
-    rewriter.insertAfter(ctx.getStart(),
-        "public int fluky(int correctValue, double probability) {if (Math.random() < probability)return (int) (correctValue * 2 * Math.random());else return correctValue;}public double fluky(double correctValue, double probability) {if (Math.random() < probability)return (correctValue * 2 * Math.random());else return correctValue;}public long fluky(long correctValue, double probability) {if (Math.random() < probability)return (long) (correctValue * 2 * Math.random());else return correctValue;}      public short fluky(short correctValue, double probability) {if (Math.random() < probability)return (short) (correctValue * 2 * Math.random());else return correctValue;}");
+    // rewriter.insertAfter(ctx.getStart(),
+    //     "public int fluky(int correctValue, double probability) {if (Math.random() < probability)return (int) (correctValue * 2 * Math.random());else return correctValue;}public double fluky(double correctValue, double probability) {if (Math.random() < probability)return (correctValue * 2 * Math.random());else return correctValue;}public long fluky(long correctValue, double probability) {if (Math.random() < probability)return (long) (correctValue * 2 * Math.random());else return correctValue;}      public short fluky(short correctValue, double probability) {if (Math.random() < probability)return (short) (correctValue * 2 * Math.random());else return correctValue;}");
   }
 
   HashMap<String, Integer> subscriptsBeforeMethod = new HashMap<>();
