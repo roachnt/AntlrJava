@@ -8,13 +8,13 @@ import java.util.ArrayList;
 import java.util.HashMap;
 
 public class StructuredDataCollector {
-  public static void main(String[] args) {
+  public static void structureData(String filePath) {
     // 7 Columns of data
     // Class, method, line, scope, variable, version, value
     BufferedReader reader;
     try {
       // Change name of data file accordingly
-      reader = new BufferedReader(new FileReader("output"));
+      reader = new BufferedReader(new FileReader(filePath));
       String line = reader.readLine();
       HashMap<String, ArrayList<Double>> variableVersionValueArrayMap = new HashMap<>();
       HashMap<String, Double> variableVersionValueMap = new HashMap<>();

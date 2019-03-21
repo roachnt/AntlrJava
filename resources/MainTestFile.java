@@ -1,14 +1,19 @@
 import java.io.FileWriter;
 import java.io.IOException;
+import java.io.PrintWriter;
 
 public class MainTestFile {
 
   public static void main(String[] args) throws IOException {
 
     FileWriter writer = new FileWriter("outY.txt");
-    PrintWriter pw = new PrintWriter("output");
+
+    // Change file name accordingly
+    String dataFileName = "output";
+
+    PrintWriter pw = new PrintWriter(dataFileName);
     pw.close();
-    FileWriter writerOut = new FileWriter("output", true);
+    FileWriter writerOut = new FileWriter(dataFileName, true);
 
     int numTrials = 2000;
 
@@ -16,7 +21,7 @@ public class MainTestFile {
 
     for (int i = 0; i < numTrials; i++) {
 
-      writerOut.write("===============start of a new class===============" + "\n");
+      writerOut.write("*** new execution ***" + "\n");
       writerOut.flush();
 
       // double[] data = FFT.makeRandom(64);
@@ -47,7 +52,6 @@ public class MainTestFile {
       //            System.out.println("data after bitreverse, FFT: " + result);
       //            System.out.println("data after bitreverse, FFTFault: " + resultFault);
 
-      writerOut.write("===============end of a new class===============" + "\n");
       writerOut.flush();
     }
 
@@ -59,6 +63,6 @@ public class MainTestFile {
       writer.flush();
     }
     writer.close();
-    StructuredDataCollector.structureData("output");
+    StructuredDataCollector.structureData(dataFileName);
   }
 }
