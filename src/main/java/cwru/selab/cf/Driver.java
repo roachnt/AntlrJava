@@ -17,7 +17,6 @@ import java.io.File;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
-
 import org.apache.commons.io.FilenameUtils;
 
 public class Driver {
@@ -27,6 +26,9 @@ public class Driver {
     File file = new File(args[0]);
     String fileNameWithOutExt = FilenameUtils.removeExtension(file.getName());
     new File("output/" + fileNameWithOutExt).mkdir();
+
+    Files.copy(Paths.get(args[0]), Paths.get("output/" + fileNameWithOutExt + "/" + file.getName()),
+        StandardCopyOption.REPLACE_EXISTING);
     Files.copy(Paths.get("resources/Fluky.java"), Paths.get("output/" + fileNameWithOutExt + "/Fluky.java"),
         StandardCopyOption.REPLACE_EXISTING);
     Files.copy(Paths.get("resources/MainTestFile.java"),
@@ -51,8 +53,7 @@ public class Driver {
 
     walker.walk(converter, tree);
     String formattedSource = "";
-    BufferedWriter writer = new BufferedWriter(new FileWriter("output/" + fileNameWithOutExt + "/" + file.getName()));
-    BufferedWriter writerFaulty = new BufferedWriter(
+    BufferedWriter writer = new BufferedWriter(
         new FileWriter("output/" + fileNameWithOutExt + "/" + fileNameWithOutExt + "Fault.java"));
     try {
       formattedSource = new Formatter().formatSource(rewriter.getText());
@@ -61,14 +62,10 @@ public class Driver {
       System.out.println(e.getMessage());
       writer.write(rewriter.getText());
       writer.close();
-      writerFaulty.write(rewriter.getText());
-      writerFaulty.close();
       return;
     }
     writer.write(formattedSource);
     writer.close();
-    writerFaulty.write(formattedSource);
-    writerFaulty.close();
 
     System.out.println(formattedSource);
     System.out.println(converter.causalMap);

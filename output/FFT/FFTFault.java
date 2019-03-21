@@ -17,7 +17,7 @@ import java.io.BufferedWriter;
 import java.io.FileWriter;
 import java.io.IOException;
 
-public class FFT {
+public class FFTFault {
   public static void record(
       String packageName,
       String clazz,

@@ -9,7 +9,7 @@ import java.io.BufferedWriter;
 import java.io.FileWriter;
 import java.io.IOException;
 
-public class LU {
+public class LUFault {
   public static void record(
       String packageName,
       String clazz,

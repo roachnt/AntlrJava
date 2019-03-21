@@ -297,6 +297,8 @@ public class Converter extends Java8BaseListener {
   public void enterNormalClassDeclaration(Java8Parser.NormalClassDeclarationContext ctx) {
     String className = ctx.getChild(2).getText();
     this.className = className;
+    TerminalNode t = (TerminalNode) ctx.getChild(2);
+    rewriter.replace(t.getSymbol(), className + "Fault");
     rewriter.insertBefore(ctx.getStart(),
         "import java.io.BufferedWriter;import java.io.FileWriter;import java.io.IOException;");
   }
