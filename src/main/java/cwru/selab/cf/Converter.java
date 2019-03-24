@@ -915,20 +915,43 @@ public class Converter extends Java8BaseListener {
     updateVariableSubscriptPredicateStack();
     predicateBlockVariablesStack.push(new HashSet<String>());
     variablesDeclaredInPredicateStack.push(new HashSet<String>());
+    phiEntryVariablesStack.push(new HashSet<String>());
+    mergeVariablesStack.push(new HashMap<>());
     if (ctx.forInit() != null) {
       handleBasicForInit(ctx.forInit(), ctx);
     }
     if (ctx.expression() != null) {
       handleBasicForNoShortIfExpression(ctx);
     }
+    HashSet<String> phiEntryVariables = phiEntryVariablesStack.pop();
+    Java8Parser.BlockContext blockContext = ctx.statementNoShortIf().statementWithoutTrailingSubstatement().block();
+
+    for (String variable : phiEntryVariables) {
+      if (!variableSubscripts.keySet().contains(variable))
+        continue;
+      if (blockContext != null) {
+        insertVersionUpdateAfter(ctx.statementNoShortIf().getStart(), variable);
+        insertRecordStatementAfter(ctx.statementNoShortIf().getStart(), variable,
+            ctx.expression().getStart().getLine());
+      } else {
+        insertRecordStatementBefore(ctx.statementNoShortIf().getStart(), variable,
+            ctx.expression().getStart().getLine());
+        insertVersionUpdateBefore(ctx.statementNoShortIf().getStart(), variable);
+      }
+      int version = variableSubscripts.get(variable);
+      causalMap.put(variable + "_" + version, new HashSet<String>());
+      causalMap.get(variable + "_" + version).add(variable + "_" + (version - 1));
+      mergeVariablesStack.lastElement().put(variable, variable + "_" + version);
+    }
   }
 
   public void exitBasicForStatementNoShortIf(Java8Parser.BasicForStatementNoShortIfContext ctx) {
+    HashMap<String, String> mergeVariables = mergeVariablesStack.pop();
     HashMap<String, Integer> varSubscriptsBeforePredicate = varSubscriptsBeforePredicateStack.pop();
     HashSet<String> variablesDeclaredInPredicate = variablesDeclaredInPredicateStack.pop();
 
     if (ctx.forUpdate() != null) {
-      handleBasicForNoShortIfUpdate(ctx);
+      handleBasicForNoShortIfUpdate(ctx, mergeVariables);
     }
 
     if (ctx.statementNoShortIf().statementWithoutTrailingSubstatement().block() == null) {
@@ -1166,7 +1189,8 @@ public class Converter extends Java8BaseListener {
     }
   }
 
-  public void handleBasicForNoShortIfUpdate(Java8Parser.BasicForStatementNoShortIfContext ctx) {
+  public void handleBasicForNoShortIfUpdate(Java8Parser.BasicForStatementNoShortIfContext ctx,
+      HashMap<String, String> mergeVariables) {
     ArrayList<Java8Parser.ContinueStatementContext> continueContexts = getAllContinueStatementContextsFromForLoop(ctx);
 
     for (int i = 0; i < ctx.forUpdate().statementExpressionList().statementExpression().size(); i++) {
@@ -1186,6 +1210,10 @@ public class Converter extends Java8BaseListener {
           insertRecordStatementBefore(ctx.statementNoShortIf().getStop(), variable, lineNumber);
           insertVersionUpdateBefore(ctx.statementNoShortIf().getStop(), variable);
           rewriter.insertBefore(ctx.statementNoShortIf().getStop(), assignmentContext.getText() + ";");
+        }
+
+        if (mergeVariables.containsKey(variable)) {
+          causalMap.get(mergeVariables.get(variable)).add(variable + "_" + variableSubscripts.get(variable));
         }
 
         HashSet<String> postFixAlteredVariables = getIncrementAndDecrementVariablesFromAssignment(assignmentContext);
@@ -1221,6 +1249,10 @@ public class Converter extends Java8BaseListener {
           insertVersionUpdateAfter(ctx.statementNoShortIf().getStart(), variable);
           insertRecordStatementAfter(ctx.statementNoShortIf().getStart(), variable, lineNumber);
         }
+
+        if (mergeVariables.containsKey(variable)) {
+          causalMap.get(mergeVariables.get(variable)).add(variable + "_" + variableSubscripts.get(variable));
+        }
       }
 
       if (expressionContext instanceof Java8Parser.PostIncrementExpressionContext
@@ -1236,6 +1268,10 @@ public class Converter extends Java8BaseListener {
             insertVersionUpdateBefore(ctx.statementNoShortIf().getStop(), variable);
             insertRecordStatementBefore(ctx.statementNoShortIf().getStop(), variable, lineNumber);
             rewriter.insertBefore(ctx.statementNoShortIf().getStop(), expressionContext.getText() + ";");
+          }
+
+          if (mergeVariables.containsKey(variable)) {
+            causalMap.get(mergeVariables.get(variable)).add(variable + "_" + variableSubscripts.get(variable));
           }
           for (Java8Parser.ContinueStatementContext continueContext : continueContexts) {
             insertRecordStatementBefore(continueContext.getStart(), variable, lineNumber);
@@ -1289,18 +1325,28 @@ public class Converter extends Java8BaseListener {
     ArrayList<String> expressionNamesList = getAllExpressionNamesFromPredicate(ctx.expression());
     Java8Parser.BlockContext blockContext = ctx.statementNoShortIf().statementWithoutTrailingSubstatement().block();
 
+    // if (blockContext != null) {
+    //   for (String variable : expressionNamesList) {
+    //     insertVersionUpdateAfter(ctx.statementNoShortIf().getStart(), variable);
+    //     insertRecordStatementAfter(ctx.statementNoShortIf().getStart(), variable,
+    //         ctx.expression().getStart().getLine());
+    //   }
+    // } else {
+    //   rewriter.insertBefore(ctx.statementNoShortIf().getStart(), "if (!(" + ctx.expression().getText() + ")) {break;}");
+    //   for (String variable : expressionNamesList) {
+    //     insertRecordStatementBefore(ctx.statementNoShortIf().getStart(), variable,
+    //         ctx.expression().getStart().getLine());
+    //     insertVersionUpdateBefore(ctx.statementNoShortIf().getStart(), variable);
+    //   }
+    // }
     if (blockContext != null) {
       for (String variable : expressionNamesList) {
-        insertVersionUpdateAfter(ctx.statementNoShortIf().getStart(), variable);
-        insertRecordStatementAfter(ctx.statementNoShortIf().getStart(), variable,
-            ctx.expression().getStart().getLine());
+        phiEntryVariablesStack.lastElement().add(variable);
       }
     } else {
       rewriter.insertBefore(ctx.statementNoShortIf().getStart(), "if (!(" + ctx.expression().getText() + ")) {break;}");
       for (String variable : expressionNamesList) {
-        insertRecordStatementBefore(ctx.statementNoShortIf().getStart(), variable,
-            ctx.expression().getStart().getLine());
-        insertVersionUpdateBefore(ctx.statementNoShortIf().getStart(), variable);
+        phiEntryVariablesStack.lastElement().add(variable);
       }
     }
   }
