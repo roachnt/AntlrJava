@@ -55,26 +55,6 @@ public class FFTFault {
     }
   }
 
-  public int fluky(int correctValue, double probability) {
-    if (Math.random() < probability) return (int) (correctValue * 2 * Math.random());
-    else return correctValue;
-  }
-
-  public double fluky(double correctValue, double probability) {
-    if (Math.random() < probability) return (correctValue * 2 * Math.random());
-    else return correctValue;
-  }
-
-  public long fluky(long correctValue, double probability) {
-    if (Math.random() < probability) return (long) (correctValue * 2 * Math.random());
-    else return correctValue;
-  }
-
-  public short fluky(short correctValue, double probability) {
-    if (Math.random() < probability) return (short) (correctValue * 2 * Math.random());
-    else return correctValue;
-  }
-
   public static final double num_flops(int N) {
     int Nd_version = -1;
     int logN_version = -1;

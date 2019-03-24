@@ -58,6 +58,9 @@ public class Driver {
     String formattedSource = "";
     BufferedWriter writer = new BufferedWriter(
         new FileWriter("output/" + fileNameWithOutExt + "/" + fileNameWithOutExt + "Fault.java"));
+    BufferedWriter causalMapWriter = new BufferedWriter(
+        new FileWriter("output/" + fileNameWithOutExt + "/" + "CausalMap.txt"));
+
     try {
       formattedSource = new Formatter().formatSource(rewriter.getText());
     } catch (Exception e) {
@@ -72,67 +75,75 @@ public class Driver {
 
     System.out.println(formattedSource);
     System.out.println(converter.causalMap);
-    try {
-      genRForCFmeansRF("output/" + fileNameWithOutExt + "/" + "RforCFmeansRF_" + fileNameWithOutExt + ".R",
-          fileNameWithOutExt + "_fault_binerrs_all", fileNameWithOutExt + "_fault_binerrs", "Y",
-          converter.getCausalMap());
-    } catch (IOException e) {
-      e.printStackTrace();
+    for (String key : converter.causalMap.keySet()) {
+      causalMapWriter.write(key);
+      for (String confounder : converter.causalMap.get(key)) {
+        causalMapWriter.write("," + confounder);
+      }
+      causalMapWriter.write("\n");
     }
+    causalMapWriter.close();
+    // try {
+    //   genRForCFmeansRF("output/" + fileNameWithOutExt + "/" + "RforCFmeansRF_" + fileNameWithOutExt + ".R",
+    //       fileNameWithOutExt + "_fault_binerrs_all", fileNameWithOutExt + "_fault_binerrs", "Y",
+    //       converter.getCausalMap());
+    // } catch (IOException e) {
+    //   e.printStackTrace();
+    // }
     // System.out.println(tree.toStringTree(parser)); // print LISP-style tree
   }
 
-  private static void genRForCFmeansRF(String RFileName, String varFrameName, String prefix, String outName,
-      HashMap<String, HashSet<String>> covariant) throws IOException {
+  // private static void genRForCFmeansRF(String RFileName, String varFrameName, String prefix, String outName,
+  //     HashMap<String, HashSet<String>> covariant) throws IOException {
 
-    OutputStream out = new FileOutputStream(RFileName);
-    BufferedWriter writer = new BufferedWriter(new OutputStreamWriter(out));
+  //   OutputStream out = new FileOutputStream(RFileName);
+  //   BufferedWriter writer = new BufferedWriter(new OutputStreamWriter(out));
 
-    writer.write("genCFmeansRF_" + prefix + " <- function() {\n\n");
-    // for RF
-    writer.write("results <- data.frame(row.names=seq(1, 10))\n\n");
-    // for esp
-    //        writer.write("results <- data.frame(row.names = \"mean\")\n\n");
+  //   writer.write("genCFmeansRF_" + prefix + " <- function() {\n\n");
+  //   // for RF
+  //   writer.write("results <- data.frame(row.names=seq(1, 10))\n\n");
+  //   // for esp
+  //   //        writer.write("results <- data.frame(row.names = \"mean\")\n\n");
 
-    for (String t : covariant.keySet()) {
-      //        for (Value t : treatNames){
-      String vfn = varFrameName;
-      // for confounder
-      String tfn = prefix + "_" + t + "_treat_df";
-      // for no confounder
-      String tfn_nocnfd = prefix + "_" + t + "_treat_nocnfd_df";
+  //   for (String t : covariant.keySet()) {
+  //     //        for (Value t : treatNames){
+  //     String vfn = varFrameName;
+  //     // for confounder
+  //     String tfn = prefix + "_" + t + "_treat_df";
+  //     // for no confounder
+  //     String tfn_nocnfd = prefix + "_" + t + "_treat_nocnfd_df";
 
-      //            // for tfn
-      writer.write(tfn + " <- data.frame(" + outName + "=" + vfn + "$" + outName + ", " + t + "=" + vfn + "$" + t);
-      HashSet<String> set = covariant.get(t);
-      for (String c : set) {
-        writer.write(", " + c + "=" + vfn + "$" + c);
-      }
+  //     //            // for tfn
+  //     writer.write(tfn + " <- data.frame(" + outName + "=" + vfn + "$" + outName + ", " + t + "=" + vfn + "$" + t);
+  //     HashSet<String> set = covariant.get(t);
+  //     for (String c : set) {
+  //       writer.write(", " + c + "=" + vfn + "$" + c);
+  //     }
 
-      // for tfn_nocnfd
-      //            writer.write(tfn_nocnfd + " <- data.frame(" + outName + "=" + vfn + "$" + outName + ", " + t + "=" + vfn + "$" + t);
+  //     // for tfn_nocnfd
+  //     //            writer.write(tfn_nocnfd + " <- data.frame(" + outName + "=" + vfn + "$" + outName + ", " + t + "=" + vfn + "$" + t);
 
-      writer.write(")\n");
+  //     writer.write(")\n");
 
-      // to remove NA
-      //            writer.write(tfn + " <- " + tfn + "[complete.cases(" + tfn + "),]" + '\n');
+  //     // to remove NA
+  //     //            writer.write(tfn + " <- " + tfn + "[complete.cases(" + tfn + "),]" + '\n');
 
-      // Only treatement, no confounder (ESP)
-      //            writer.write("results[[\"" + t + "\"]] <- CFmeansForESP(" + tfn_nocnfd + ", \"" + outName + "\", \"" + t + "\"");
+  //     // Only treatement, no confounder (ESP)
+  //     //            writer.write("results[[\"" + t + "\"]] <- CFmeansForESP(" + tfn_nocnfd + ", \"" + outName + "\", \"" + t + "\"");
 
-      // For random forest
-      writer
-          .write("results[[\"" + t + "\"]] <- CFmeansForDecileBinsRF(" + tfn + ", \"" + outName + "\", \"" + t + "\"");
+  //     // For random forest
+  //     writer
+  //         .write("results[[\"" + t + "\"]] <- CFmeansForDecileBinsRF(" + tfn + ", \"" + outName + "\", \"" + t + "\"");
 
-      // For LM and LASSO
-      //            writer.write("results[[\"" + t + "\"]] <- CFmeansForDecileBinsLM(" + tfn + ", \"" + outName + "\", \"" + t + "\"");
+  //     // For LM and LASSO
+  //     //            writer.write("results[[\"" + t + "\"]] <- CFmeansForDecileBinsLM(" + tfn + ", \"" + outName + "\", \"" + t + "\"");
 
-      writer.write(")\n\n");
-    }
-    writer.write("return(results)\n\n");
-    writer.write("}\n");
-    writer.flush();
-    writer.close();
-  }
+  //     writer.write(")\n\n");
+  //   }
+  //   writer.write("return(results)\n\n");
+  //   writer.write("}\n");
+  //   writer.flush();
+  //   writer.close();
+  // }
 
 }

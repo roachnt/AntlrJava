@@ -18,10 +18,6 @@ import org.apache.commons.lang3.tuple.ImmutablePair;
 import org.apache.commons.lang3.tuple.MutablePair;
 import org.apache.commons.lang3.tuple.Pair;
 
-// TODO: If-Else
-// TODO: Else-If
-// TODO: Phi Function Types
-
 public class Converter extends Java8BaseListener {
 
   final int IDENTIFIER_TYPE = 102;
@@ -289,7 +285,7 @@ public class Converter extends Java8BaseListener {
   @Override
   public void enterMethodDeclarator(Java8Parser.MethodDeclaratorContext ctx) {
     String methodName = ctx.getChild(0).getText();
-    System.out.println(methodName);
+    // System.out.println(methodName);
     currentMethodName = methodName;
   }
 
@@ -329,8 +325,8 @@ public class Converter extends Java8BaseListener {
   // When exiting a method, initilize all variables (both from parameters and in body)
   @Override
   public void exitMethodBody(Java8Parser.MethodBodyContext ctx) {
-    System.out.println(currentMethodName);
-    System.out.println(allLocalVariables);
+    // System.out.println(currentMethodName);
+    // System.out.println(allLocalVariables);
     for (String variable : allLocalVariables) {
       if (!methodParameters.contains(variable)) {
         if (subscriptsBeforeMethod.containsKey(variable))
@@ -361,8 +357,8 @@ public class Converter extends Java8BaseListener {
 
   @Override
   public void exitConstructorBody(Java8Parser.ConstructorBodyContext ctx) {
-    System.out.println(currentMethodName);
-    System.out.println(allLocalVariables);
+    // System.out.println(currentMethodName);
+    // System.out.println(allLocalVariables);
     for (String variable : allLocalVariables) {
       if (!methodParameters.contains(variable)) {
         if (subscriptsBeforeMethod.containsKey(variable))
@@ -811,6 +807,9 @@ public class Converter extends Java8BaseListener {
     }
 
   }
+
+  // 1. Insert record statement for all updated variables inside loop before the break condition
+  // 2. 
 
   @Override
   public void enterBasicForStatement(Java8Parser.BasicForStatementContext ctx) {
