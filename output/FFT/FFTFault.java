@@ -96,10 +96,10 @@ public class FFTFault {
       i_version = 0;
       record("", "FFT", "inverse", 41, 1, "i", i, i_version);
       while (true) {
-        nd_version = 1;
-        record("", "FFT", "inverse", 41, 1, "nd", nd, nd_version);
         i_version = 1;
         record("", "FFT", "inverse", 41, 1, "i", i, i_version);
+        nd_version = 1;
+        record("", "FFT", "inverse", 41, 1, "nd", nd, nd_version);
         if (!(i < nd)) {
           break;
         }
@@ -138,10 +138,10 @@ public class FFTFault {
       i_version = 3;
       record("", "FFT", "test", 59, 1, "i", i, i_version);
       while (true) {
-        i_version = 4;
-        record("", "FFT", "test", 59, 1, "i", i, i_version);
         nd_version = 3;
         record("", "FFT", "test", 59, 1, "nd", nd, nd_version);
+        i_version = 4;
+        record("", "FFT", "test", 59, 1, "i", i, i_version);
         if (!(i < nd)) {
           break;
         }
@@ -175,10 +175,10 @@ public class FFTFault {
       i_version = 6;
       record("", "FFT", "makeRandom", 72, 1, "i", i, i_version);
       while (true) {
-        nd_version = 5;
-        record("", "FFT", "makeRandom", 72, 1, "nd", nd, nd_version);
         i_version = 7;
         record("", "FFT", "makeRandom", 72, 1, "i", i, i_version);
+        nd_version = 5;
+        record("", "FFT", "makeRandom", 72, 1, "nd", nd, nd_version);
         if (!(i < nd)) {
           break;
         }
@@ -304,10 +304,10 @@ public class FFTFault {
       bit_version = 0;
       record("", "FFT", "transform_internal", 114, 1, "bit", bit, bit_version);
       while (true) {
-        bit_version = 1;
-        record("", "FFT", "transform_internal", 114, 1, "bit", bit, bit_version);
         logn_version = 1;
         record("", "FFT", "transform_internal", 114, 1, "logn", logn, logn_version);
+        bit_version = 1;
+        record("", "FFT", "transform_internal", 114, 1, "bit", bit, bit_version);
         if (!(bit < logn)) {
           break;
         }
@@ -491,10 +491,10 @@ public class FFTFault {
     record("", "FFT", "bitreverse", 170, 1, "j", j, j_version);
     {
       while (true) {
-        i_version = 15;
-        record("", "FFT", "bitreverse", 171, 1, "i", i, i_version);
         nm1_version = 1;
         record("", "FFT", "bitreverse", 171, 1, "nm1", nm1, nm1_version);
+        i_version = 15;
+        record("", "FFT", "bitreverse", 171, 1, "i", i, i_version);
         if (!(i < nm1)) {
           break;
         }

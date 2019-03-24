@@ -28,9 +28,9 @@ public class MainTestFile {
       writerOut.write("*** new execution ***" + "\n");
       writerOut.flush();
 
-      double[] data = FFT.makeRandom(64);
-      double[] dataFault = new double[data.length];
-      System.arraycopy(data, 0, dataFault, 0, data.length);
+      // double[] data = FFT.makeRandom(64);
+      // double[] dataFault = new double[data.length];
+      // System.arraycopy(data, 0, dataFault, 0, data.length);
 
       //            System.out.println("data before bitreverse, FFT: " + FFT.test(data));
       //            System.out.println("data before bitreverse, FFTFault: " + FFTFault.test(dataFault));
@@ -40,13 +40,13 @@ public class MainTestFile {
       //            FFTFault.bitreverse(dataFault);
 
       // For transform
-      FFT.transform(data);
-      FFTFault.transform(dataFault);
+      // FFT.transform(data);
+      // FFTFault.transform(dataFault);
 
-      for (int j = 0; j < data.length; j++) {
-        if (data[j] != dataFault[j])
-          Y[i] = 1;
-      }
+      // for (int j = 0; j < data.length; j++) {
+      //   if (data[j] != dataFault[j])
+      //     Y[i] = 1;
+      // }
 
       //            double result = FFT.test(data);
       //            double resultFault = FFTFault.test(dataFault);

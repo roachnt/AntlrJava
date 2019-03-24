@@ -1,5 +1,3 @@
-package cwru.selab.cf;
-
 public class Fluky {
 
   public static void main(String[] args) {
