@@ -98,6 +98,8 @@ public class StructuredDataCollector {
       writer.write(tfn + " <- data.frame(" + outName + "=" + vfn + "$" + outName + ", " + t + "=" + vfn + "$" + t);
       HashSet<String> set = covariant.get(t);
       for (String c : set) {
+        if (!usedVariables.contains(c))
+          continue;
         writer.write(", " + c + "=" + vfn + "$" + c);
       }
 
