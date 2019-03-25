@@ -1101,6 +1101,9 @@ public class Converter extends Java8BaseListener {
             if (variableSubscripts.containsKey(expressionName))
               expressionNamesSSA.add(expressionName + "_" + variableSubscripts.get(expressionName));
         }
+        if (assignmentContext.assignmentOperator().getText() != "=") {
+          expressionNamesSSA.add(variable + "_" + variableSubscripts.get(variable));
+        }
 
         if (ctx.statement().statementWithoutTrailingSubstatement().block() == null) {
           rewriter.insertAfter(ctx.statement().getStop(), assignmentContext.getText() + ";");
@@ -1220,6 +1223,9 @@ public class Converter extends Java8BaseListener {
           if (!variableSubscripts.keySet().isEmpty())
             if (variableSubscripts.containsKey(expressionName))
               expressionNamesSSA.add(expressionName + "_" + variableSubscripts.get(expressionName));
+        }
+        if (assignmentContext.assignmentOperator().getText() != "=") {
+          expressionNamesSSA.add(variable + "_" + variableSubscripts.get(variable));
         }
         if (ctx.statementNoShortIf().statementWithoutTrailingSubstatement().block() == null) {
           rewriter.insertAfter(ctx.statementNoShortIf().getStop(), assignmentContext.getText() + ";");

@@ -18,8 +18,15 @@ import java.io.FileWriter;
 import java.io.IOException;
 
 public class FFTFault {
-  public static void record(String packageName, String clazz, String method, int line, int staticScope,
-      String variableName, Object value, int version) {
+  public static void record(
+      String packageName,
+      String clazz,
+      String method,
+      int line,
+      int staticScope,
+      String variableName,
+      Object value,
+      int version) {
     BufferedWriter writer = null;
     try {
       writer = new BufferedWriter(new FileWriter(clazz + "_output.txt", true));
@@ -27,8 +34,21 @@ public class FFTFault {
       System.out.println(e.getMessage());
     }
     try {
-      writer.append(clazz + "," + method + "," + line + "," + staticScope + "," + variableName + "," + version + ","
-          + value + "\n");
+      writer.append(
+          clazz
+              + ","
+              + method
+              + ","
+              + line
+              + ","
+              + staticScope
+              + ","
+              + variableName
+              + ","
+              + version
+              + ","
+              + value
+              + "\n");
       writer.close();
     } catch (Exception e) {
       System.out.println(e.getMessage());
@@ -367,10 +387,12 @@ public class FFTFault {
             {
               double tmp_real = w_real - s * w_imag - s2 * w_real;
               tmp_real_version = 0;
-              record("", "FFT", "transform_internal", 141, 4, "tmp_real", tmp_real, tmp_real_version);
+              record(
+                  "", "FFT", "transform_internal", 141, 4, "tmp_real", tmp_real, tmp_real_version);
               double tmp_imag = w_imag + s * w_real - s2 * w_imag;
               tmp_imag_version = 0;
-              record("", "FFT", "transform_internal", 142, 4, "tmp_imag", tmp_imag, tmp_imag_version);
+              record(
+                  "", "FFT", "transform_internal", 142, 4, "tmp_imag", tmp_imag, tmp_imag_version);
               w_real = tmp_real;
               w_real_version = 1;
               record("", "FFT", "transform_internal", 143, 4, "w_real", w_real, w_real_version);
@@ -400,17 +422,21 @@ public class FFTFault {
 
                 double z1_real = data[j];
                 z1_real_version = 0;
-                record("", "FFT", "transform_internal", 150, 4, "z1_real", z1_real, z1_real_version);
+                record(
+                    "", "FFT", "transform_internal", 150, 4, "z1_real", z1_real, z1_real_version);
                 double z1_imag = data[j + 1];
                 z1_imag_version = 0;
-                record("", "FFT", "transform_internal", 151, 4, "z1_imag", z1_imag, z1_imag_version);
+                record(
+                    "", "FFT", "transform_internal", 151, 4, "z1_imag", z1_imag, z1_imag_version);
 
                 double wd_real = w_real * z1_real - w_imag * z1_imag;
                 wd_real_version = 1;
-                record("", "FFT", "transform_internal", 153, 4, "wd_real", wd_real, wd_real_version);
+                record(
+                    "", "FFT", "transform_internal", 153, 4, "wd_real", wd_real, wd_real_version);
                 double wd_imag = w_real * z1_imag + w_imag * z1_real;
                 wd_imag_version = 1;
-                record("", "FFT", "transform_internal", 154, 4, "wd_imag", wd_imag, wd_imag_version);
+                record(
+                    "", "FFT", "transform_internal", 154, 4, "wd_imag", wd_imag, wd_imag_version);
 
                 data[j] = data[i] - wd_real;
                 data[j + 1] = data[i + 1] - wd_imag;
