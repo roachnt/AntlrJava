@@ -246,9 +246,6 @@ public class Converter extends Java8BaseListener {
         }
         currentContext = currentContext.getParent();
       }
-      if (variable.equals("b")) {
-        System.out.println("Assignment: " + variable + "_" + variableSubscripts.get(variable));
-      }
 
       if (variableSubscripts.containsKey(variable)) {
         causalMap.put(variable + "_" + variableSubscripts.get(variable), new HashSet<String>());
@@ -846,7 +843,7 @@ public class Converter extends Java8BaseListener {
     HashSet<String> phiEntryVariables = phiEntryVariablesStack.pop();
     Java8Parser.BlockContext blockContext = ctx.statement().statementWithoutTrailingSubstatement().block();
 
-    System.out.println(currentMethodName);
+    // System.out.println(currentMethodName);
     for (String variable : phiEntryVariables) {
       if (!variableSubscripts.containsKey(variable))
         continue;
@@ -858,7 +855,7 @@ public class Converter extends Java8BaseListener {
         insertVersionUpdateBefore(ctx.statement().getStart(), variable);
       }
       int version = variableSubscripts.get(variable);
-      System.out.println(variable + "_" + version);
+      // System.out.println(variable + "_" + version);
       causalMap.put(variable + "_" + version, new HashSet<String>());
       causalMap.get(variable + "_" + version).add(variable + "_" + (version - 1));
       mergeVariablesStack.lastElement().put(variable, variable + "_" + version);
@@ -906,6 +903,7 @@ public class Converter extends Java8BaseListener {
         insertVersionUpdateAfter(ctx.getStop(), variable);
         insertRecordStatementAfter(ctx.getStop(), variable, lineNumber);
 
+        // System.out.println(variable + "_" + variableSubscripts.get(variable));
         if (variableSubscripts.containsKey(variable)) {
           causalMap.put(variable + "_" + variableSubscripts.get(variable), new HashSet<String>());
           causalMap.get(variable + "_" + variableSubscripts.get(variable)).addAll(confounders);
@@ -995,6 +993,7 @@ public class Converter extends Java8BaseListener {
         insertVersionUpdateAfter(ctx.getStop(), variable);
         insertRecordStatementAfter(ctx.getStop(), variable, ctx.getStop().getLine());
 
+        // System.out.println(variable + "_" + variableSubscripts.get(variable));
         if (variableSubscripts.containsKey(variable)) {
           causalMap.put(variable + "_" + variableSubscripts.get(variable), new HashSet<String>());
           causalMap.get(variable + "_" + variableSubscripts.get(variable)).addAll(confounders);
@@ -1100,7 +1099,7 @@ public class Converter extends Java8BaseListener {
 
   public void handleBasicForUpdate(Java8Parser.BasicForStatementContext ctx, HashMap<String, String> mergeVariables) {
     ArrayList<Java8Parser.ContinueStatementContext> continueContexts = getAllContinueStatementContextsFromForLoop(ctx);
-    System.out.println("Inside Update");
+    // System.out.println("Inside Update");
 
     for (int i = 0; i < ctx.forUpdate().statementExpressionList().statementExpression().size(); i++) {
       ParserRuleContext expressionContext = (ParserRuleContext) ctx.forUpdate().statementExpressionList()
