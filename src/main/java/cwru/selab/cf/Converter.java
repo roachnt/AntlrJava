@@ -243,8 +243,15 @@ public class Converter extends Java8BaseListener {
         }
         currentContext = currentContext.getParent();
       }
-    }
+      if (variable.equals("b")) {
+        System.out.println("Assignment: " + variable + "_" + variableSubscripts.get(variable));
+      }
 
+      if (!variableSubscripts.isEmpty()) {
+        causalMap.put(variable + "_" + variableSubscripts.get(variable), new HashSet<String>());
+        causalMap.get(variable + "_" + variableSubscripts.get(variable)).addAll(expressionNamesSSA);
+      }
+    }
     HashSet<String> postFixAlteredVariables = getIncrementAndDecrementVariablesFromAssignment(ctx);
     for (String alteredVariable : postFixAlteredVariables) {
       insertVersionUpdateAfter(ctx.getParent().getParent().getStop(), alteredVariable);
@@ -256,10 +263,6 @@ public class Converter extends Java8BaseListener {
       }
     }
 
-    if (!variableSubscripts.isEmpty()) {
-      causalMap.put(variable + "_" + variableSubscripts.get(variable), new HashSet<String>());
-      causalMap.get(variable + "_" + variableSubscripts.get(variable)).addAll(expressionNamesSSA);
-    }
   }
 
   ArrayList<String> methodParameters = new ArrayList<>();
@@ -830,6 +833,7 @@ public class Converter extends Java8BaseListener {
     HashSet<String> phiEntryVariables = phiEntryVariablesStack.pop();
     Java8Parser.BlockContext blockContext = ctx.statement().statementWithoutTrailingSubstatement().block();
 
+    System.out.println(currentMethodName);
     for (String variable : phiEntryVariables) {
       if (!variableSubscripts.keySet().contains(variable))
         continue;
@@ -841,6 +845,7 @@ public class Converter extends Java8BaseListener {
         insertVersionUpdateBefore(ctx.statement().getStart(), variable);
       }
       int version = variableSubscripts.get(variable);
+      System.out.println(variable + "_" + version);
       causalMap.put(variable + "_" + version, new HashSet<String>());
       causalMap.get(variable + "_" + version).add(variable + "_" + (version - 1));
       mergeVariablesStack.lastElement().put(variable, variable + "_" + version);
@@ -1078,6 +1083,7 @@ public class Converter extends Java8BaseListener {
 
   public void handleBasicForUpdate(Java8Parser.BasicForStatementContext ctx, HashMap<String, String> mergeVariables) {
     ArrayList<Java8Parser.ContinueStatementContext> continueContexts = getAllContinueStatementContextsFromForLoop(ctx);
+    System.out.println("Inside Update");
 
     for (int i = 0; i < ctx.forUpdate().statementExpressionList().statementExpression().size(); i++) {
       ParserRuleContext expressionContext = (ParserRuleContext) ctx.forUpdate().statementExpressionList()
@@ -1088,9 +1094,13 @@ public class Converter extends Java8BaseListener {
         String variable = assignmentContext.leftHandSide().getText();
         int lineNumber = assignmentContext.getStart().getLine();
 
-        ArrayList<String> confounders = new ArrayList<>();
-        if (variableSubscripts.containsKey(variable))
-          confounders.add(variable + "_" + variableSubscripts.get(variable));
+        ArrayList<String> expressionNames = getAllExpressionNamesFromPredicate(assignmentContext.expression());
+        ArrayList<String> expressionNamesSSA = new ArrayList<>();
+        for (String expressionName : expressionNames) {
+          if (!variableSubscripts.keySet().isEmpty())
+            if (variableSubscripts.containsKey(expressionName))
+              expressionNamesSSA.add(expressionName + "_" + variableSubscripts.get(expressionName));
+        }
 
         if (ctx.statement().statementWithoutTrailingSubstatement().block() == null) {
           rewriter.insertAfter(ctx.statement().getStop(), assignmentContext.getText() + ";");
@@ -1106,7 +1116,7 @@ public class Converter extends Java8BaseListener {
         }
 
         causalMap.put(variable + "_" + variableSubscripts.get(variable), new HashSet<String>());
-        causalMap.get(variable + "_" + variableSubscripts.get(variable)).addAll(confounders);
+        causalMap.get(variable + "_" + variableSubscripts.get(variable)).addAll(expressionNamesSSA);
 
         HashSet<String> postFixAlteredVariables = getIncrementAndDecrementVariablesFromAssignment(assignmentContext);
         for (String alteredVariable : postFixAlteredVariables) {
@@ -1188,6 +1198,7 @@ public class Converter extends Java8BaseListener {
         }
       }
     }
+
   }
 
   public void handleBasicForNoShortIfUpdate(Java8Parser.BasicForStatementNoShortIfContext ctx,
@@ -1203,6 +1214,13 @@ public class Converter extends Java8BaseListener {
         String variable = assignmentContext.leftHandSide().getText();
         int lineNumber = assignmentContext.getStart().getLine();
 
+        ArrayList<String> expressionNames = getAllExpressionNamesFromPredicate(assignmentContext.expression());
+        ArrayList<String> expressionNamesSSA = new ArrayList<>();
+        for (String expressionName : expressionNames) {
+          if (!variableSubscripts.keySet().isEmpty())
+            if (variableSubscripts.containsKey(expressionName))
+              expressionNamesSSA.add(expressionName + "_" + variableSubscripts.get(expressionName));
+        }
         if (ctx.statementNoShortIf().statementWithoutTrailingSubstatement().block() == null) {
           rewriter.insertAfter(ctx.statementNoShortIf().getStop(), assignmentContext.getText() + ";");
           insertVersionUpdateAfter(ctx.statementNoShortIf().getStop(), variable);
@@ -1212,10 +1230,12 @@ public class Converter extends Java8BaseListener {
           insertVersionUpdateBefore(ctx.statementNoShortIf().getStop(), variable);
           rewriter.insertBefore(ctx.statementNoShortIf().getStop(), assignmentContext.getText() + ";");
         }
-
         if (mergeVariables.containsKey(variable)) {
           causalMap.get(mergeVariables.get(variable)).add(variable + "_" + variableSubscripts.get(variable));
         }
+
+        causalMap.put(variable + "_" + variableSubscripts.get(variable), new HashSet<String>());
+        causalMap.get(variable + "_" + variableSubscripts.get(variable)).addAll(expressionNamesSSA);
 
         HashSet<String> postFixAlteredVariables = getIncrementAndDecrementVariablesFromAssignment(assignmentContext);
         for (String alteredVariable : postFixAlteredVariables) {
