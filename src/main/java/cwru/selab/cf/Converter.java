@@ -385,6 +385,7 @@ public class Converter extends Java8BaseListener {
                 "int " + variable + "_version" + " = -1;");
         }
       }
+      rewriter.insertAfter(ctx.explicitConstructorInvocation().getStop(), initializeFormalParams);
     } else {
       for (String variable : allLocalVariables) {
         if (!methodParameters.contains(variable)) {
@@ -395,8 +396,8 @@ public class Converter extends Java8BaseListener {
             rewriter.insertAfter(ctx.getStart(), "int " + variable + "_version" + " = -1;");
         }
       }
+      rewriter.insertAfter(ctx.getStart(), initializeFormalParams);
     }
-    rewriter.insertAfter(ctx.getStart(), initializeFormalParams);
     currentMethodName = "";
     initializeFormalParams = "";
     allLocalVariables.clear();
