@@ -141,53 +141,54 @@ public class Converter extends Java8BaseListener {
   @Override
   public void enterLocalVariableDeclaration(Java8Parser.LocalVariableDeclarationContext ctx) {
     String type = tokens.getText(ctx.unannType());
-    for (int i = 0; i < ctx.variableDeclaratorList().variableDeclarator().size(); i++) {
-      Java8Parser.VariableDeclaratorIdContext varContext = ctx.variableDeclaratorList().variableDeclarator(i)
-          .variableDeclaratorId();
-      if (varContext.dims() != null)
-        continue;
+    if (ctx.unannType().unannReferenceType() == null)
+      for (int i = 0; i < ctx.variableDeclaratorList().variableDeclarator().size(); i++) {
+        Java8Parser.VariableDeclaratorIdContext varContext = ctx.variableDeclaratorList().variableDeclarator(i)
+            .variableDeclaratorId();
+        if (varContext.dims() != null)
+          continue;
 
-      String variable = tokens.getText(varContext);
+        String variable = tokens.getText(varContext);
 
-      if (!variableSubscripts.containsKey(variable))
-        variableSubscripts.put(variable, -1);
-      // System.out.println(variableSubscripts);
-      int lineNumber = ctx.getStart().getLine();
-      if (insidePredicateBlock(ctx)) {
-        variablesDeclaredInPredicateStack.lastElement().add(variable);
-      }
-
-      if (!isDescendantOf(ctx, Java8Parser.ForInitContext.class)
-          && ctx.variableDeclaratorList().variableDeclarator(i).variableInitializer() != null) {
-        ArrayList<String> expressionNames = getAllExpressionNamesFromPredicate(
-            ctx.variableDeclaratorList().variableDeclarator(i).variableInitializer());
-        ArrayList<String> expressionNamesSSA = new ArrayList<>();
-        for (String expressionName : expressionNames) {
-          if (variableSubscripts.containsKey(expressionName))
-            expressionNamesSSA.add(expressionName + "_" + variableSubscripts.get(expressionName));
+        if (!variableSubscripts.containsKey(variable))
+          variableSubscripts.put(variable, -1);
+        // System.out.println(variableSubscripts);
+        int lineNumber = ctx.getStart().getLine();
+        if (insidePredicateBlock(ctx)) {
+          variablesDeclaredInPredicateStack.lastElement().add(variable);
         }
 
-        currentVariableSubscriptMap.put(variable, 0);
+        if (!isDescendantOf(ctx, Java8Parser.ForInitContext.class)
+            && ctx.variableDeclaratorList().variableDeclarator(i).variableInitializer() != null) {
+          ArrayList<String> expressionNames = getAllExpressionNamesFromPredicate(
+              ctx.variableDeclaratorList().variableDeclarator(i).variableInitializer());
+          ArrayList<String> expressionNamesSSA = new ArrayList<>();
+          for (String expressionName : expressionNames) {
+            if (variableSubscripts.containsKey(expressionName))
+              expressionNamesSSA.add(expressionName + "_" + variableSubscripts.get(expressionName));
+          }
 
-        insertVersionUpdateAfter(ctx.getParent().getParent().getStop(), variable);
-        insertRecordStatementAfter(ctx.getParent().getStop(), variable, lineNumber);
+          currentVariableSubscriptMap.put(variable, 0);
 
-        causalMap.put(variable + "_" + variableSubscripts.get(variable), new HashSet<String>());
-        causalMap.get(variable + "_" + variableSubscripts.get(variable)).addAll(expressionNamesSSA);
+          insertVersionUpdateAfter(ctx.getParent().getParent().getStop(), variable);
+          insertRecordStatementAfter(ctx.getParent().getStop(), variable, lineNumber);
 
-        HashSet<String> postFixAlteredVariables = getIncrementAndDecrementVariablesFromAssignment(ctx);
-        for (String alteredVariable : postFixAlteredVariables) {
-          if (insidePredicateBlock(ctx)) {
-            for (HashSet<String> predicateBlockVariables : predicateBlockVariablesStack) {
-              predicateBlockVariables.add(alteredVariable);
+          causalMap.put(variable + "_" + variableSubscripts.get(variable), new HashSet<String>());
+          causalMap.get(variable + "_" + variableSubscripts.get(variable)).addAll(expressionNamesSSA);
+
+          HashSet<String> postFixAlteredVariables = getIncrementAndDecrementVariablesFromAssignment(ctx);
+          for (String alteredVariable : postFixAlteredVariables) {
+            if (insidePredicateBlock(ctx)) {
+              for (HashSet<String> predicateBlockVariables : predicateBlockVariablesStack) {
+                predicateBlockVariables.add(alteredVariable);
+              }
             }
           }
         }
-      }
-      if (!isDescendantOf(ctx, Java8Parser.ForInitContext.class))
-        allLocalVariables.add(variable);
+        if (!isDescendantOf(ctx, Java8Parser.ForInitContext.class))
+          allLocalVariables.add(variable);
 
-    }
+      }
 
   }
 

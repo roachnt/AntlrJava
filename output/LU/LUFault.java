@@ -46,26 +46,6 @@ public class LUFault {
       System.out.println(e.getMessage());
     }
   }
-
-  public int fluky(int correctValue, double probability) {
-    if (Math.random() < probability) return (int) (correctValue * 2 * Math.random());
-    else return correctValue;
-  }
-
-  public double fluky(double correctValue, double probability) {
-    if (Math.random() < probability) return (correctValue * 2 * Math.random());
-    else return correctValue;
-  }
-
-  public long fluky(long correctValue, double probability) {
-    if (Math.random() < probability) return (long) (correctValue * 2 * Math.random());
-    else return correctValue;
-  }
-
-  public short fluky(short correctValue, double probability) {
-    if (Math.random() < probability) return (short) (correctValue * 2 * Math.random());
-    else return correctValue;
-  }
   /**
    * Returns a <em>copy</em> of the compact LU factorization. (useful mainly for debugging.)
    *
@@ -373,10 +353,10 @@ public class LUFault {
       j_version = 9;
       record("", "LU", "factor", 164, 1, "j", j, j_version);
       while (true) {
-        j_version = 10;
-        record("", "LU", "factor", 164, 1, "j", j, j_version);
         minMN_version = 1;
         record("", "LU", "factor", 164, 1, "minMN", minMN, minMN_version);
+        j_version = 10;
+        record("", "LU", "factor", 164, 1, "j", j, j_version);
         if (!(j < minMN)) {
           break;
         }
@@ -594,10 +574,10 @@ public class LUFault {
             j_version = 12;
             record("", "LU", "solve", 252, 2, "j", j, j_version);
             while (true) {
-              i_version = 17;
-              record("", "LU", "solve", 252, 2, "i", i, i_version);
               j_version = 13;
               record("", "LU", "solve", 252, 2, "j", j, j_version);
+              i_version = 17;
+              record("", "LU", "solve", 252, 2, "i", i, i_version);
               if (!(j < i)) {
                 break;
               }
@@ -682,24 +662,12 @@ public class LUFault {
   private int pivot_[];
 
   public static void main(String[] args) {
-    int temp_version = -1;
-    int forCopy_version = -1;
-    int getlu_version = -1;
-    int lu_version = -1;
-    int afterCopy_version = -1;
-    int pivot_version = -1;
     int args_version = 0;
     double[][] temp = {{1, 2, 3}, {2, 5, 7}, {3, 5, 3}};
-    temp_version = 0;
-    record("", "LU", "main", 272, 1, "temp", temp, temp_version);
     //        double[][] temp = {{4, 3}, {6, 3}};
     LU lu = new LU(temp);
-    lu_version = 0;
-    record("", "LU", "main", 274, 1, "lu", lu, lu_version);
 
     double[][] getlu = lu.getLU();
-    getlu_version = 0;
-    record("", "LU", "main", 276, 1, "getlu", getlu, getlu_version);
     {
       int i_version = 21;
       int i = 0;
@@ -737,11 +705,7 @@ public class LUFault {
     System.out.println("\n\n\n");
 
     double[][] forCopy = {{1, 2}, {3, 4}};
-    forCopy_version = 0;
-    record("", "LU", "main", 285, 1, "forCopy", forCopy, forCopy_version);
     double[][] afterCopy = new_copy(forCopy);
-    afterCopy_version = 0;
-    record("", "LU", "main", 286, 1, "afterCopy", afterCopy, afterCopy_version);
     {
       int i_version = 24;
       int i = 0;
@@ -777,8 +741,6 @@ public class LUFault {
     }
 
     int[] pivot = lu.getPivot();
-    pivot_version = 0;
-    record("", "LU", "main", 293, 1, "pivot", pivot, pivot_version);
     lu.solve(new double[] {1, 2, 3});
   }
 }
