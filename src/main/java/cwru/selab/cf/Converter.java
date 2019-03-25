@@ -155,7 +155,9 @@ public class Converter extends Java8BaseListener {
         // System.out.println(variableSubscripts);
         int lineNumber = ctx.getStart().getLine();
         if (insidePredicateBlock(ctx)) {
-          variablesDeclaredInPredicateStack.lastElement().add(variable);
+          for (HashSet<String> variablesDeclaredInPredicate : variablesDeclaredInPredicateStack) {
+            variablesDeclaredInPredicate.add(variable);
+          }
         }
 
         if (!isDescendantOf(ctx, Java8Parser.ForInitContext.class)
@@ -297,9 +299,18 @@ public class Converter extends Java8BaseListener {
     String className = ctx.getChild(2).getText();
     this.className = className;
     TerminalNode t = (TerminalNode) ctx.getChild(2);
-    rewriter.replace(t.getSymbol(), className + "Fault");
-    rewriter.insertBefore(ctx.getStart(),
-        "import java.io.BufferedWriter;import java.io.FileWriter;import java.io.IOException;");
+    // rewriter.replace(t.getSymbol(), className + "Fault");
+
+  }
+
+  public void enterCompilationUnit(Java8Parser.CompilationUnitContext ctx) {
+    if (ctx.packageDeclaration() != null)
+      rewriter.insertAfter(ctx.packageDeclaration().getStop(),
+          "import java.io.BufferedWriter;import java.io.FileWriter;import java.io.IOException;");
+    else {
+      rewriter.insertBefore(ctx.getStart(),
+          "import java.io.BufferedWriter;import java.io.FileWriter;import java.io.IOException;");
+    }
   }
 
   @Override
@@ -348,6 +359,7 @@ public class Converter extends Java8BaseListener {
 
   @Override
   public void enterConstructorBody(Java8Parser.ConstructorBodyContext ctx) {
+
     subscriptsBeforeMethod.putAll(variableSubscripts);
     for (String variable : methodParameters) {
       int subscript = currentVariableSubscriptMap.get(variable);
@@ -361,14 +373,27 @@ public class Converter extends Java8BaseListener {
   @Override
   public void exitConstructorBody(Java8Parser.ConstructorBodyContext ctx) {
     // System.out.println(currentMethodName);
-    // System.out.println(allLocalVariables);
-    for (String variable : allLocalVariables) {
-      if (!methodParameters.contains(variable)) {
-        if (subscriptsBeforeMethod.containsKey(variable))
-          rewriter.insertAfter(ctx.getStart(),
-              "int " + variable + "_version" + " = " + subscriptsBeforeMethod.get(variable) + ";");
-        else
-          rewriter.insertAfter(ctx.getStart(), "int " + variable + "_version" + " = -1;");
+    // System.out.println(allLocalVariables);  
+    if (ctx.explicitConstructorInvocation() != null) {
+      for (String variable : allLocalVariables) {
+        if (!methodParameters.contains(variable)) {
+          if (subscriptsBeforeMethod.containsKey(variable))
+            rewriter.insertAfter(ctx.explicitConstructorInvocation().getStart(),
+                "int " + variable + "_version" + " = " + subscriptsBeforeMethod.get(variable) + ";");
+          else
+            rewriter.insertAfter(ctx.explicitConstructorInvocation().getStart(),
+                "int " + variable + "_version" + " = -1;");
+        }
+      }
+    } else {
+      for (String variable : allLocalVariables) {
+        if (!methodParameters.contains(variable)) {
+          if (subscriptsBeforeMethod.containsKey(variable))
+            rewriter.insertAfter(ctx.getStart(),
+                "int " + variable + "_version" + " = " + subscriptsBeforeMethod.get(variable) + ";");
+          else
+            rewriter.insertAfter(ctx.getStart(), "int " + variable + "_version" + " = -1;");
+        }
       }
     }
     rewriter.insertAfter(ctx.getStart(), initializeFormalParams);
@@ -455,7 +480,7 @@ public class Converter extends Java8BaseListener {
   @Override
   public void exitIfThenStatement(Java8Parser.IfThenStatementContext ctx) {
     HashMap<String, Integer> varSubscriptsBeforePredicate = varSubscriptsBeforePredicateStack.pop();
-    variablesDeclaredInPredicateStack.pop();
+    HashSet<String> variablesDeclaredInPredicate = variablesDeclaredInPredicateStack.pop();
     String type = "Integer";
     ParserRuleContext exprCtx = ctx.expression();
     int phiSubscript = phiSubscriptQueue.removeFirst();
@@ -466,7 +491,7 @@ public class Converter extends Java8BaseListener {
     rewriter.insertBefore(ctx.statement().getStart(), "{");
     rewriter.insertAfter(ctx.statement().getStop(), "}");
     for (String var : predicateBlockVariablesStack.pop()) {
-      if (!variableSubscripts.containsKey(var))
+      if (!variableSubscripts.containsKey(var) || variablesDeclaredInPredicate.contains(var))
         continue;
       int subscript = currentVariableSubscriptMap.get(var);
       ArrayList<String> confounders = new ArrayList<>();
@@ -498,7 +523,7 @@ public class Converter extends Java8BaseListener {
 
   @Override
   public void exitIfThenElseStatement(Java8Parser.IfThenElseStatementContext ctx) {
-    variablesDeclaredInPredicateStack.pop();
+    HashSet<String> variablesDeclaredInPredicate = variablesDeclaredInPredicateStack.pop();
     // System.out.println(ctx.getStart().getLine());
     HashMap<String, Integer> varSubscriptsBeforePredicate = varSubscriptsBeforePredicateStack.pop();
     String type = "Integer";
@@ -524,6 +549,9 @@ public class Converter extends Java8BaseListener {
 
     HashSet<String> predicateBlockVariables = predicateBlockVariablesStack.pop();
     for (String var : predicateBlockVariables) {
+      if (variablesDeclaredInPredicate.contains(var))
+        continue;
+
       int subscript = currentVariableSubscriptMap.get(var);
       currentVariableSubscriptMap.put(var, subscript + 1);
 
