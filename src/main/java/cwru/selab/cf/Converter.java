@@ -378,10 +378,10 @@ public class Converter extends Java8BaseListener {
       for (String variable : allLocalVariables) {
         if (!methodParameters.contains(variable)) {
           if (subscriptsBeforeMethod.containsKey(variable))
-            rewriter.insertAfter(ctx.explicitConstructorInvocation().getStart(),
+            rewriter.insertAfter(ctx.explicitConstructorInvocation().getStop(),
                 "int " + variable + "_version" + " = " + subscriptsBeforeMethod.get(variable) + ";");
           else
-            rewriter.insertAfter(ctx.explicitConstructorInvocation().getStart(),
+            rewriter.insertAfter(ctx.explicitConstructorInvocation().getStop(),
                 "int " + variable + "_version" + " = -1;");
         }
       }
