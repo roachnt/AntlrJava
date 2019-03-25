@@ -6,11 +6,11 @@ i_13,a_1,b_4
 i_16,i_15
 i_15,i_14,i_16
 d_0,i_4
-b_2,b_2
+b_2,b_1
 b_1,b_2,dual_0
 b_4,b_5,dual_1
 bit_2,bit_1
-b_5,b_5
+b_5,b_4
 j_0,b_1,dual_0
 tmp_imag_0,w_imag_0,s_0,s2_0,w_real_0
 j_2
@@ -61,7 +61,7 @@ i_5,i_4
 k_3,n_7
 i_4,i_3,i_5
 nd_5,nd_4
-k_2,k_2
+k_2,k_1
 theta_0,direction_0,dual_0
 i_7,i_6,i_8
 ii_0,i_15
@@ -74,7 +74,7 @@ bit_1,bit_2,bit_0
 diff_0
 norm_0,n_0
 diff_1,d_0
-dual_2,dual_2
+dual_2,dual_1
 dual_1,dual_0
 dual_0
 w_real_0

@@ -1088,6 +1088,10 @@ public class Converter extends Java8BaseListener {
         String variable = assignmentContext.leftHandSide().getText();
         int lineNumber = assignmentContext.getStart().getLine();
 
+        ArrayList<String> confounders = new ArrayList<>();
+        if (variableSubscripts.containsKey(variable))
+          confounders.add(variable + "_" + variableSubscripts.get(variable));
+
         if (ctx.statement().statementWithoutTrailingSubstatement().block() == null) {
           rewriter.insertAfter(ctx.statement().getStop(), assignmentContext.getText() + ";");
           insertVersionUpdateAfter(ctx.statement().getStop(), variable);
@@ -1101,9 +1105,6 @@ public class Converter extends Java8BaseListener {
           causalMap.get(mergeVariables.get(variable)).add(variable + "_" + variableSubscripts.get(variable));
         }
 
-        ArrayList<String> confounders = new ArrayList<>();
-        if (variableSubscripts.containsKey(variable))
-          confounders.add(variable + "_" + variableSubscripts.get(variable));
         causalMap.put(variable + "_" + variableSubscripts.get(variable), new HashSet<String>());
         causalMap.get(variable + "_" + variableSubscripts.get(variable)).addAll(confounders);
 
