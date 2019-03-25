@@ -73,7 +73,7 @@ public class Driver {
     writer.write(formattedSource);
     writer.close();
 
-    System.out.println(formattedSource);
+    // System.out.println(formattedSource);
     System.out.println(converter.causalMap);
     for (String key : converter.causalMap.keySet()) {
       causalMapWriter.write(key);
