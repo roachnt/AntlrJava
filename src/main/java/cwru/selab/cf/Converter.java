@@ -173,8 +173,10 @@ public class Converter extends Java8BaseListener {
           insertVersionUpdateAfter(ctx.getParent().getParent().getStop(), variable);
           insertRecordStatementAfter(ctx.getParent().getStop(), variable, lineNumber);
 
-          causalMap.put(variable + "_" + variableSubscripts.get(variable), new HashSet<String>());
-          causalMap.get(variable + "_" + variableSubscripts.get(variable)).addAll(expressionNamesSSA);
+          if (variableSubscripts.containsKey(variable)) {
+            causalMap.put(variable + "_" + variableSubscripts.get(variable), new HashSet<String>());
+            causalMap.get(variable + "_" + variableSubscripts.get(variable)).addAll(expressionNamesSSA);
+          }
 
           HashSet<String> postFixAlteredVariables = getIncrementAndDecrementVariablesFromAssignment(ctx);
           for (String alteredVariable : postFixAlteredVariables) {
@@ -248,7 +250,7 @@ public class Converter extends Java8BaseListener {
         System.out.println("Assignment: " + variable + "_" + variableSubscripts.get(variable));
       }
 
-      if (!variableSubscripts.isEmpty()) {
+      if (variableSubscripts.containsKey(variable)) {
         causalMap.put(variable + "_" + variableSubscripts.get(variable), new HashSet<String>());
         causalMap.get(variable + "_" + variableSubscripts.get(variable)).addAll(expressionNamesSSA);
       }
@@ -410,8 +412,10 @@ public class Converter extends Java8BaseListener {
       }
       currentContext = currentContext.getParent();
     }
-    causalMap.put(varName + "_" + variableSubscripts.get(varName), new HashSet<String>());
-    causalMap.get(varName + "_" + variableSubscripts.get(varName)).addAll(confounders);
+    if (variableSubscripts.containsKey(varName)) {
+      causalMap.put(varName + "_" + variableSubscripts.get(varName), new HashSet<String>());
+      causalMap.get(varName + "_" + variableSubscripts.get(varName)).addAll(confounders);
+    }
   }
 
   // Replace -- with initialization of a new variable
@@ -436,8 +440,10 @@ public class Converter extends Java8BaseListener {
       }
       currentContext = currentContext.getParent();
     }
-    causalMap.put(varName + "_" + variableSubscripts.get(varName), new HashSet<String>());
-    causalMap.get(varName + "_" + variableSubscripts.get(varName)).addAll(confounders);
+    if (variableSubscripts.containsKey(varName)) {
+      causalMap.put(varName + "_" + variableSubscripts.get(varName), new HashSet<String>());
+      causalMap.get(varName + "_" + variableSubscripts.get(varName)).addAll(confounders);
+    }
   }
 
   @Override
@@ -473,8 +479,10 @@ public class Converter extends Java8BaseListener {
 
       insertVersionUpdateAfter(ctx.getStop(), var);
       insertRecordStatementAfter(ctx.getStop(), var, ctx.getStop().getLine());
-      causalMap.put(var + "_" + variableSubscripts.get(var), new HashSet<String>());
-      causalMap.get(var + "_" + variableSubscripts.get(var)).addAll(confounders);
+      if (variableSubscripts.containsKey(var)) {
+        causalMap.put(var + "_" + variableSubscripts.get(var), new HashSet<String>());
+        causalMap.get(var + "_" + variableSubscripts.get(var)).addAll(confounders);
+      }
     }
 
   }
@@ -530,19 +538,20 @@ public class Converter extends Java8BaseListener {
     for (String var : ifBlockVariables) {
       if (!variableSubscripts.containsKey(var))
         continue;
-      causalMap.put(var + "_" + variableSubscripts.get(var), new HashSet<String>());
+      if (variableSubscripts.containsKey(var)) {
+        causalMap.put(var + "_" + variableSubscripts.get(var), new HashSet<String>());
+        causalMap.get(var + "_" + variableSubscripts.get(var)).add(var + "_" + ifBranchVariableSubscripts.get(var));
+      }
 
-      causalMap.get(var + "_" + variableSubscripts.get(var)).add(var + "_" + ifBranchVariableSubscripts.get(var));
       allAddedVariables.add(var);
     }
 
     for (String var : elseBlockVariables) {
       if (!variableSubscripts.containsKey(var))
         continue;
-      if (!causalMap.containsKey(var + "_" + variableSubscripts.get(var)))
-        causalMap.put(var + "_" + variableSubscripts.get(var), new HashSet<String>());
-
+      causalMap.put(var + "_" + variableSubscripts.get(var), new HashSet<String>());
       causalMap.get(var + "_" + variableSubscripts.get(var)).add(var + "_" + elseBranchVariableSubscripts.get(var));
+
       allAddedVariables.add(var);
     }
 
@@ -599,7 +608,6 @@ public class Converter extends Java8BaseListener {
       if (!variableSubscripts.containsKey(var))
         continue;
       causalMap.put(var + "_" + variableSubscripts.get(var), new HashSet<String>());
-
       causalMap.get(var + "_" + variableSubscripts.get(var)).add(var + "_" + ifBranchVariableSubscripts.get(var));
       allAddedVariables.add(var);
     }
@@ -731,8 +739,10 @@ public class Converter extends Java8BaseListener {
       insertVersionUpdateAfter(ctx.getStop(), variable);
       insertRecordStatementAfter(ctx.getStop(), variable, ctx.getStop().getLine());
 
-      causalMap.put(variable + "_" + variableSubscripts.get(variable), new HashSet<String>());
-      causalMap.get(variable + "_" + variableSubscripts.get(variable)).addAll(confounders);
+      if (variableSubscripts.containsKey(variable)) {
+        causalMap.put(variable + "_" + variableSubscripts.get(variable), new HashSet<String>());
+        causalMap.get(variable + "_" + variableSubscripts.get(variable)).addAll(confounders);
+      }
     }
 
   }
@@ -806,8 +816,10 @@ public class Converter extends Java8BaseListener {
       insertVersionUpdateAfter(ctx.getStop(), variable);
       insertRecordStatementAfter(ctx.getStop(), variable, ctx.getStop().getLine());
 
-      causalMap.put(variable + "_" + variableSubscripts.get(variable), new HashSet<String>());
-      causalMap.get(variable + "_" + variableSubscripts.get(variable)).addAll(confounders);
+      if (variableSubscripts.containsKey(variable)) {
+        causalMap.put(variable + "_" + variableSubscripts.get(variable), new HashSet<String>());
+        causalMap.get(variable + "_" + variableSubscripts.get(variable)).addAll(confounders);
+      }
     }
 
   }
@@ -836,7 +848,7 @@ public class Converter extends Java8BaseListener {
 
     System.out.println(currentMethodName);
     for (String variable : phiEntryVariables) {
-      if (!variableSubscripts.keySet().contains(variable))
+      if (!variableSubscripts.containsKey(variable))
         continue;
       if (blockContext != null) {
         insertVersionUpdateAfter(ctx.statement().getStart(), variable);
@@ -894,8 +906,10 @@ public class Converter extends Java8BaseListener {
         insertVersionUpdateAfter(ctx.getStop(), variable);
         insertRecordStatementAfter(ctx.getStop(), variable, lineNumber);
 
-        causalMap.put(variable + "_" + variableSubscripts.get(variable), new HashSet<String>());
-        causalMap.get(variable + "_" + variableSubscripts.get(variable)).addAll(confounders);
+        if (variableSubscripts.containsKey(variable)) {
+          causalMap.put(variable + "_" + variableSubscripts.get(variable), new HashSet<String>());
+          causalMap.get(variable + "_" + variableSubscripts.get(variable)).addAll(confounders);
+        }
       }
     }
   }
@@ -933,7 +947,7 @@ public class Converter extends Java8BaseListener {
     Java8Parser.BlockContext blockContext = ctx.statementNoShortIf().statementWithoutTrailingSubstatement().block();
 
     for (String variable : phiEntryVariables) {
-      if (!variableSubscripts.keySet().contains(variable))
+      if (!variableSubscripts.containsKey(variable))
         continue;
       if (blockContext != null) {
         insertVersionUpdateAfter(ctx.statementNoShortIf().getStart(), variable);
@@ -981,8 +995,10 @@ public class Converter extends Java8BaseListener {
         insertVersionUpdateAfter(ctx.getStop(), variable);
         insertRecordStatementAfter(ctx.getStop(), variable, ctx.getStop().getLine());
 
-        causalMap.put(variable + "_" + variableSubscripts.get(variable), new HashSet<String>());
-        causalMap.get(variable + "_" + variableSubscripts.get(variable)).addAll(confounders);
+        if (variableSubscripts.containsKey(variable)) {
+          causalMap.put(variable + "_" + variableSubscripts.get(variable), new HashSet<String>());
+          causalMap.get(variable + "_" + variableSubscripts.get(variable)).addAll(confounders);
+        }
 
       }
     }
@@ -1119,8 +1135,10 @@ public class Converter extends Java8BaseListener {
           causalMap.get(mergeVariables.get(variable)).add(variable + "_" + variableSubscripts.get(variable));
         }
 
-        causalMap.put(variable + "_" + variableSubscripts.get(variable), new HashSet<String>());
-        causalMap.get(variable + "_" + variableSubscripts.get(variable)).addAll(expressionNamesSSA);
+        if (variableSubscripts.containsKey(variable)) {
+          causalMap.put(variable + "_" + variableSubscripts.get(variable), new HashSet<String>());
+          causalMap.get(variable + "_" + variableSubscripts.get(variable)).addAll(expressionNamesSSA);
+        }
 
         HashSet<String> postFixAlteredVariables = getIncrementAndDecrementVariablesFromAssignment(assignmentContext);
         for (String alteredVariable : postFixAlteredVariables) {
@@ -1163,8 +1181,10 @@ public class Converter extends Java8BaseListener {
           causalMap.get(mergeVariables.get(variable)).add(variable + "_" + variableSubscripts.get(variable));
         }
 
-        causalMap.put(variable + "_" + variableSubscripts.get(variable), new HashSet<String>());
-        causalMap.get(variable + "_" + variableSubscripts.get(variable)).addAll(confounders);
+        if (variableSubscripts.containsKey(variable)) {
+          causalMap.put(variable + "_" + variableSubscripts.get(variable), new HashSet<String>());
+          causalMap.get(variable + "_" + variableSubscripts.get(variable)).addAll(confounders);
+        }
       }
 
       if (expressionContext instanceof Java8Parser.PostIncrementExpressionContext
@@ -1190,8 +1210,11 @@ public class Converter extends Java8BaseListener {
             causalMap.get(mergeVariables.get(variable)).add(variable + "_" + variableSubscripts.get(variable));
           }
 
-          causalMap.put(variable + "_" + variableSubscripts.get(variable), new HashSet<String>());
-          causalMap.get(variable + "_" + variableSubscripts.get(variable)).addAll(confounders);
+          if (variableSubscripts.containsKey(variable)) {
+            causalMap.put(variable + "_" + variableSubscripts.get(variable), new HashSet<String>());
+            causalMap.get(variable + "_" + variableSubscripts.get(variable)).addAll(confounders);
+          }
+
           for (Java8Parser.ContinueStatementContext continueContext : continueContexts) {
             insertRecordStatementBefore(continueContext.getStart(), variable, lineNumber);
             insertVersionUpdateBefore(continueContext.getStart(), variable);
@@ -1241,8 +1264,10 @@ public class Converter extends Java8BaseListener {
           causalMap.get(mergeVariables.get(variable)).add(variable + "_" + variableSubscripts.get(variable));
         }
 
-        causalMap.put(variable + "_" + variableSubscripts.get(variable), new HashSet<String>());
-        causalMap.get(variable + "_" + variableSubscripts.get(variable)).addAll(expressionNamesSSA);
+        if (variableSubscripts.containsKey(variable)) {
+          causalMap.put(variable + "_" + variableSubscripts.get(variable), new HashSet<String>());
+          causalMap.get(variable + "_" + variableSubscripts.get(variable)).addAll(expressionNamesSSA);
+        }
 
         HashSet<String> postFixAlteredVariables = getIncrementAndDecrementVariablesFromAssignment(assignmentContext);
         for (String alteredVariable : postFixAlteredVariables) {
