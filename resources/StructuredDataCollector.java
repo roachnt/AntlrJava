@@ -41,9 +41,9 @@ public class StructuredDataCollector {
         String version = row[5];
         Double value;
         if (row[6].equals("true"))
-          value = 1;
+          value = 1.0;
         else if (row[6].equals("false"))
-          value = 0;
+          value = 0.0;
         else
           value = Double.parseDouble(row[6]);
 
