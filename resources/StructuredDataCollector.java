@@ -39,7 +39,13 @@ public class StructuredDataCollector {
         // String scope = row[3];
         String variable = row[4];
         String version = row[5];
-        Double value = Double.parseDouble(row[6]);
+        Double value;
+        if (row[6].equals("true"))
+          value = 1;
+        else if (row[6].equals("false"))
+          value = 0;
+        else
+          value = Double.parseDouble(row[6]);
 
         variableVersionValueMap.put(variable + "_" + version, value);
         // read next line

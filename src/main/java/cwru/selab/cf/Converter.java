@@ -1210,17 +1210,16 @@ public class Converter extends Java8BaseListener {
         int lineNumber = expressionContext.getStart().getLine();
 
         ArrayList<String> confounders = new ArrayList<>();
-
-        if (variableSubscripts.containsValue(variable))
+        if (variableSubscripts.containsKey(variable))
           confounders.add(variable + "_" + variableSubscripts.get(variable));
         if (ctx.statement().statementWithoutTrailingSubstatement().block() == null) {
-          insertVersionUpdateBefore(ctx.statement().getStart(), variable);
-          insertRecordStatementBefore(ctx.statement().getStart(), variable, lineNumber);
-          rewriter.insertBefore(ctx.statement().getStart(), expressionContext.getText() + ";");
+          rewriter.insertAfter(ctx.statement().getStop(), expressionContext.getText() + ";");
+          insertVersionUpdateAfter(ctx.statement().getStop(), variable);
+          insertRecordStatementAfter(ctx.statement().getStop(), variable, lineNumber);
         } else {
-          rewriter.insertAfter(ctx.statement().getStart(), expressionContext.getText() + ";");
-          insertVersionUpdateAfter(ctx.statement().getStart(), variable);
-          insertRecordStatementAfter(ctx.statement().getStart(), variable, lineNumber);
+          insertRecordStatementBefore(ctx.statement().getStop(), variable, lineNumber);
+          insertVersionUpdateBefore(ctx.statement().getStop(), variable);
+          rewriter.insertBefore(ctx.statement().getStop(), expressionContext.getText() + ";");
         }
 
         if (mergeVariables.containsKey(variable)) {
@@ -1231,6 +1230,14 @@ public class Converter extends Java8BaseListener {
           causalMap.put(variable + "_" + variableSubscripts.get(variable), new HashSet<String>());
           causalMap.get(variable + "_" + variableSubscripts.get(variable)).addAll(confounders);
           String mergeVar = variable + "_" + variableSubscripts.get(variable);
+        }
+
+        for (Java8Parser.ContinueStatementContext continueContext : continueContexts) {
+          insertRecordStatementBefore(continueContext.getStart(), variable, lineNumber);
+          insertVersionUpdateBefore(continueContext.getStart(), variable);
+          rewriter.insertBefore(continueContext.getStart(), expressionContext.getText() + ";");
+          rewriter.insertBefore(continueContext.getStart(), "{");
+          rewriter.insertAfter(continueContext.getStop(), "}");
         }
       }
 
