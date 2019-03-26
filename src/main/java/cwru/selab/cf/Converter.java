@@ -189,8 +189,8 @@ public class Converter extends Java8BaseListener {
             }
           }
         }
-        if (!isDescendantOf(ctx, Java8Parser.ForInitContext.class))
-          allLocalVariables.add(variable);
+        // if (!isDescendantOf(ctx, Java8Parser.ForInitContext.class))
+        allLocalVariables.add(variable);
 
       }
 
@@ -324,6 +324,8 @@ public class Converter extends Java8BaseListener {
 
   HashMap<String, Integer> subscriptsBeforeMethod = new HashMap<>();
 
+  HashSet<String> variablesTrackedInMethod = new HashSet<String>();
+
   @Override
   public void enterMethodBody(Java8Parser.MethodBodyContext ctx) {
     subscriptsBeforeMethod.putAll(variableSubscripts);
@@ -333,10 +335,12 @@ public class Converter extends Java8BaseListener {
         initializeFormalParams += "int " + variable + "_version" + " = " + variableSubscripts.get(variable) + ";";
       else
         initializeFormalParams += "int " + variable + "_version" + " = 0" + ";";
+      variablesTrackedInMethod.add(variable);
     }
   }
 
   // When exiting a method, initilize all variables (both from parameters and in body)
+
   @Override
   public void exitMethodBody(Java8Parser.MethodBodyContext ctx) {
     // System.out.println(currentMethodName);
@@ -348,6 +352,7 @@ public class Converter extends Java8BaseListener {
               "int " + variable + "_version" + " = " + subscriptsBeforeMethod.get(variable) + ";");
         else
           rewriter.insertAfter(ctx.getStart(), "int " + variable + "_version" + " = -1;");
+        variablesTrackedInMethod.add(variable);
       }
     }
     rewriter.insertAfter(ctx.getStart(), initializeFormalParams);
@@ -355,6 +360,7 @@ public class Converter extends Java8BaseListener {
     initializeFormalParams = "";
     allLocalVariables.clear();
     methodParameters.clear();
+    variablesTrackedInMethod.clear();
   }
 
   @Override
@@ -1056,11 +1062,14 @@ public class Converter extends Java8BaseListener {
         String variable = tokens.getText(varContext);
         int lineNumber = forCtx.getStart().getLine();
         currentVariableSubscriptMap.put(variable, 0);
-        if (variableSubscripts.containsKey(variable)) {
-          initializer += "int " + variable + "_version = " + variableSubscripts.get(variable) + ";";
-        } else {
-          initializer += "int " + variable + "_version = -1;";
-        }
+        // if (variableSubscripts.containsKey(variable)) {
+        //   if (allLocalVariables.contains(variable))
+        //     initializer += variable + "_version = " + variableSubscripts.get(variable) + ";";
+        //   else
+        //     initializer += "int " + variable + "_version = " + variableSubscripts.get(variable) + ";";
+        // } else {
+        //   initializer += "int " + variable + "_version = -1;";
+        // }
       }
       for (int i = 0; i < ctx.localVariableDeclaration().variableDeclaratorList().variableDeclarator().size(); i++) {
         Java8Parser.VariableDeclaratorIdContext varContext = ctx.localVariableDeclaration().variableDeclaratorList()
@@ -1468,8 +1477,12 @@ public class Converter extends Java8BaseListener {
       rewriter.insertBefore(forNode.getSymbol(), "int " + iteratorItem + "_version = -1;");
       variableSubscripts.put(iteratorItem, -1);
     } else {
-      rewriter.insertBefore(forNode.getSymbol(),
-          "int " + iteratorItem + "_version = " + variableSubscripts.get(iteratorItem) + ";");
+      if (allLocalVariables.contains(iteratorItem))
+        rewriter.insertBefore(forNode.getSymbol(),
+            iteratorItem + "_version = " + variableSubscripts.get(iteratorItem) + ";");
+      else
+        rewriter.insertBefore(forNode.getSymbol(),
+            "int " + iteratorItem + "_version = " + variableSubscripts.get(iteratorItem) + ";");
 
     }
 
@@ -1529,8 +1542,12 @@ public class Converter extends Java8BaseListener {
       rewriter.insertBefore(forNode.getSymbol(), "int " + iteratorItem + "_version = -1;");
       variableSubscripts.put(iteratorItem, -1);
     } else {
-      rewriter.insertBefore(forNode.getSymbol(),
-          "int " + iteratorItem + "_version = " + variableSubscripts.get(iteratorItem) + ";");
+      if (allLocalVariables.contains(iteratorItem))
+        rewriter.insertBefore(forNode.getSymbol(),
+            iteratorItem + "_version = " + variableSubscripts.get(iteratorItem) + ";");
+      else
+        rewriter.insertBefore(forNode.getSymbol(),
+            "int " + iteratorItem + "_version = " + variableSubscripts.get(iteratorItem) + ";");
     }
 
     rewriter.insertBefore(forNode.getSymbol(),
