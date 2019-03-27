@@ -13,48 +13,44 @@ public class MainTestFile {
     FileWriter writer = new FileWriter("outY.txt");
 
     // Change file name to the same as the file being produced by the instrumented program
-    String dataFileName = "FFT_output.txt";
+    String dataFileName = "LUFault_output.txt";
 
     PrintWriter pw = new PrintWriter(dataFileName);
     pw.close();
     FileWriter writerOut = new FileWriter(dataFileName, true);
 
-    int numTrials = 100;
+    int numTrials = 1000;
 
     int[] Y = new int[numTrials];
 
-    for (int i = 0; i < numTrials; i++) {
+    for (int r = 0; r < numTrials; r++) {
 
       writerOut.write("*** new execution ***" + "\n");
       writerOut.flush();
 
-      // double[] data = FFT.makeRandom(64);
-      // double[] dataFault = new double[data.length];
-      // System.arraycopy(data, 0, dataFault, 0, data.length);
+      double[][] input = new double[10][10];
+      for (int i = 0; i < 10; i++) {
+        for (int j = 0; j < 10; j++) {
+          double temp = Math.floor(100 * Math.random());
+          input[i][j] = temp;
+        }
+      }
 
-      //            System.out.println("data before bitreverse, FFT: " + FFT.test(data));
-      //            System.out.println("data before bitreverse, FFTFault: " + FFTFault.test(dataFault));
+      //            LU.factor(input, new int[10]);
+      //            LUFault.factor(input2, new int[10]);
 
-      // For bitreverse
-      //            FFT.bitreverse(data);
-      //            FFTFault.bitreverse(dataFault);
-
-      // For transform
-      // FFT.transform(data);
-      // FFTFault.transform(dataFault);
-
-      // for (int j = 0; j < data.length; j++) {
-      //   if (data[j] != dataFault[j])
-      //     Y[i] = 1;
-      // }
-
-      //            double result = FFT.test(data);
-      //            double resultFault = FFTFault.test(dataFault);
-      //            if (result == resultFault) Y[i] = 0;
-      //            else Y[i] = 1;
-
-      //            System.out.println("data after bitreverse, FFT: " + result);
-      //            System.out.println("data after bitreverse, FFTFault: " + resultFault);
+      LU lu = new LU(input);
+      LUFault lu2 = new LUFault(input);
+      //
+      double[][] getlu = lu.getLU();
+      double[][] getlu2 = lu2.getLUFault();
+      //
+      for (int i = 0; i < 10; i++) {
+        for (int j = 0; j < 10; j++) {
+          if (getlu[i][j] != getlu2[i][j])
+            Y[r] = 1;
+        }
+      }
 
       writerOut.flush();
     }

@@ -13,7 +13,7 @@ public class MainTestFile {
     FileWriter writer = new FileWriter("outY.txt");
 
     // Change file name to the same as the file being produced by the instrumented program
-    String dataFileName = "INSERTCLASSNAMEHERE_output.txt";
+    String dataFileName = "output.txt";
 
     PrintWriter pw = new PrintWriter(dataFileName);
     pw.close();

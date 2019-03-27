@@ -2,6 +2,11 @@
  * Computes FFTFault's of complex, double precision data where n is an integer power of 2. This appears
  * to be slower than the Radix2 method, but the code is smaller and simpler, and it requires no
  * extra storage.
+ * 
+ * wd_real_0
+ * z1_real_0
+ * tmp_real_1
+ * 
  *
  * <p>
  *
@@ -24,7 +29,7 @@ public class FFTFault {
   static HashMap<String, String> __versionTrackerMap__ = new HashMap<>();
   static HashSet<String> __versionTrackerSet__ = new HashSet<>();
 
-  public static void recordAll(String packageName, String clazz, String method, int line, int staticScope,
+  public static void record(String packageName, String clazz, String method, int line, int staticScope,
       String variableName, Object value, int version) {
     BufferedWriter writer = null;
     try {
@@ -35,49 +40,6 @@ public class FFTFault {
     try {
       writer.append(clazz + "," + method + "," + line + "," + staticScope + "," + variableName + "," + version + ","
           + value + "\n");
-      writer.close();
-    } catch (Exception e) {
-      System.out.println(e.getMessage());
-    }
-  }
-
-  public static void recordFirst(String packageName, String clazz, String method, int line, int staticScope,
-      String variableName, Object value, int version) {
-    BufferedWriter writer = null;
-    if (__versionTrackerSet__.contains(variableName + "_" + version))
-      return;
-    try {
-      writer = new BufferedWriter(new FileWriter(clazz + "_output.txt", true));
-    } catch (IOException e) {
-      System.out.println(e.getMessage());
-    }
-    try {
-      writer.append(clazz + "," + method + "," + line + "," + staticScope + "," + variableName + "," + version + ","
-          + value + "\n");
-      writer.close();
-      __versionTrackerSet__.add(variableName + "_" + version);
-    } catch (Exception e) {
-      System.out.println(e.getMessage());
-    }
-  }
-
-  public static void recordLast(String packageName, String clazz, String method, int line, int staticScope,
-      String variableName, Object value, int version) {
-      __versionTrackerMap__.put(variableName + "_" + version, clazz + "," + method + "," + line + "," + staticScope
-          + "," + variableName + "," + version + "," + value + "\n");
-  }
-
-  public static void writeOutLast() {
-    BufferedWriter writer = null;
-    try {
-      writer = new BufferedWriter(new FileWriter("FFTFault_output.txt", true));
-    } catch (IOException e) {
-      System.out.println(e.getMessage());
-    }
-    try {
-      for (String variableVersion : __versionTrackerMap__.keySet()) {
-      writer.append(__versionTrackerMap__.get(variableVersion));
-        }
       writer.close();
     } catch (Exception e) {
       System.out.println(e.getMessage());
@@ -90,10 +52,10 @@ public class FFTFault {
     int N_version = 0;
     double Nd = (double) N;
     Nd_version = 0;
-    recordFirst("", "FFTFault", "num_flops", 19, 1, "Nd", Nd, Nd_version);
+    record("", "FFTFault", "num_flops", 19, 1, "Nd", Nd, Nd_version);
     double logN = (double) log2(N);
     logN_version = 0;
-    recordFirst("", "FFTFault", "num_flops", 20, 1, "logN", logN, logN_version);
+    record("", "FFTFault", "num_flops", 20, 1, "logN", logN, logN_version);
 
     return (5.0 * Nd - 2) * logN + 2 * (Nd + 1);
   }
@@ -112,30 +74,30 @@ public class FFTFault {
     // Normalize
     int nd = data.length;
     nd_version = 0;
-    recordFirst("", "FFTFault", "inverse", 38, 1, "nd", nd, nd_version);
+    record("", "FFTFault", "inverse", 38, 1, "nd", nd, nd_version);
     int n = nd / 2;
     n_version = 0;
-    recordFirst("", "FFTFault", "inverse", 39, 1, "n", n, n_version);
+    record("", "FFTFault", "inverse", 39, 1, "n", n, n_version);
     double norm = 1 / ((double) n);
     norm_version = 0;
-    recordFirst("", "FFTFault", "inverse", 40, 1, "norm", norm, norm_version);
+    record("", "FFTFault", "inverse", 40, 1, "norm", norm, norm_version);
     {
       int i_version = -1;
       int i = 0;
       i_version = 0;
-      recordFirst("", "FFTFault", "inverse", 41, 1, "i", i, i_version);
+      record("", "FFTFault", "inverse", 41, 1, "i", i, i_version);
       while (true) {
         i_version = 1;
-        recordFirst("", "FFTFault", "inverse", 41, 1, "i", i, i_version);
+        record("", "FFTFault", "inverse", 41, 1, "i", i, i_version);
         nd_version = 1;
-        recordFirst("", "FFTFault", "inverse", 41, 1, "nd", nd, nd_version);
+        record("", "FFTFault", "inverse", 41, 1, "nd", nd, nd_version);
         if (!(i < nd)) {
           break;
         }
         data[i] *= norm;
         i++;
         i_version = 2;
-        recordFirst("", "FFTFault", "inverse", 41, 1, "i", i, i_version);
+        record("", "FFTFault", "inverse", 41, 1, "i", i, i_version);
       }
     }
   }
@@ -150,7 +112,7 @@ public class FFTFault {
     int diff_version = -1;
     int nd = data.length;
     nd_version = 2;
-    recordFirst("", "FFTFault", "test", 50, 1, "nd", nd, nd_version);
+    record("", "FFTFault", "test", 50, 1, "nd", nd, nd_version);
     // Make duplicate for comparison
     double copy[] = new double[nd];
     System.arraycopy(data, 0, copy, 0, nd);
@@ -160,33 +122,33 @@ public class FFTFault {
     // Compute RMS difference.
     double diff = 0.0;
     diff_version = 0;
-    recordFirst("", "FFTFault", "test", 58, 1, "diff", diff, diff_version);
+    record("", "FFTFault", "test", 58, 1, "diff", diff, diff_version);
     {
       int i_version = 2;
       int i = 0;
       i_version = 3;
-      recordFirst("", "FFTFault", "test", 59, 1, "i", i, i_version);
+      record("", "FFTFault", "test", 59, 1, "i", i, i_version);
       while (true) {
         nd_version = 3;
-        recordFirst("", "FFTFault", "test", 59, 1, "nd", nd, nd_version);
+        record("", "FFTFault", "test", 59, 1, "nd", nd, nd_version);
         i_version = 4;
-        recordFirst("", "FFTFault", "test", 59, 1, "i", i, i_version);
+        record("", "FFTFault", "test", 59, 1, "i", i, i_version);
         if (!(i < nd)) {
           break;
         }
         double d = data[i] - copy[i];
         d_version = 0;
-        recordFirst("", "FFTFault", "test", 60, 2, "d", d, d_version);
+        record("", "FFTFault", "test", 60, 2, "d", d, d_version);
         diff += d * d;
         diff_version = 1;
-        recordFirst("", "FFTFault", "test", 61, 2, "diff", diff, diff_version);
+        record("", "FFTFault", "test", 61, 2, "diff", diff, diff_version);
         i++;
         i_version = 5;
-        recordFirst("", "FFTFault", "test", 59, 1, "i", i, i_version);
+        record("", "FFTFault", "test", 59, 1, "i", i, i_version);
       }
     }
     diff_version = 2;
-    recordFirst("", "FFTFault", "test", 62, 1, "diff", diff, diff_version);
+    record("", "FFTFault", "test", 62, 1, "diff", diff, diff_version);
     return Math.sqrt(diff / nd);
   }
 
@@ -196,25 +158,25 @@ public class FFTFault {
     int n_version = 0;
     int nd = 2 * n;
     nd_version = 4;
-    recordFirst("", "FFTFault", "makeRandom", 70, 1, "nd", nd, nd_version);
+    record("", "FFTFault", "makeRandom", 70, 1, "nd", nd, nd_version);
     double data[] = new double[nd];
     {
       int i_version = 5;
       int i = 0;
       i_version = 6;
-      recordFirst("", "FFTFault", "makeRandom", 72, 1, "i", i, i_version);
+      record("", "FFTFault", "makeRandom", 72, 1, "i", i, i_version);
       while (true) {
         i_version = 7;
-        recordFirst("", "FFTFault", "makeRandom", 72, 1, "i", i, i_version);
+        record("", "FFTFault", "makeRandom", 72, 1, "i", i, i_version);
         nd_version = 5;
-        recordFirst("", "FFTFault", "makeRandom", 72, 1, "nd", nd, nd_version);
+        record("", "FFTFault", "makeRandom", 72, 1, "nd", nd, nd_version);
         if (!(i < nd)) {
           break;
         }
         data[i] = Math.random();
         i++;
         i_version = 8;
-        recordFirst("", "FFTFault", "makeRandom", 72, 1, "i", i, i_version);
+        record("", "FFTFault", "makeRandom", 72, 1, "i", i, i_version);
       }
     }
     return data;
@@ -227,7 +189,7 @@ public class FFTFault {
       {
         int n = 1024;
         n_version = 1;
-        recordFirst("", "FFTFault", "main", 82, 2, "n", n, n_version);
+        record("", "FFTFault", "main", 82, 2, "n", n, n_version);
         System.out.println("n=" + n + " => RMS Error=" + test(makeRandom(n)));
       }
     }
@@ -235,20 +197,20 @@ public class FFTFault {
       int i_version = 8;
       int i = 0;
       i_version = 9;
-      recordFirst("", "FFTFault", "main", 85, 1, "i", i, i_version);
+      record("", "FFTFault", "main", 85, 1, "i", i, i_version);
       while (true) {
         i_version = 10;
-        recordFirst("", "FFTFault", "main", 85, 1, "i", i, i_version);
+        record("", "FFTFault", "main", 85, 1, "i", i, i_version);
         if (!(i < args.length)) {
           break;
         }
         int n = Integer.parseInt(args[i]);
         n_version = 2;
-        recordFirst("", "FFTFault", "main", 86, 2, "n", n, n_version);
+        record("", "FFTFault", "main", 86, 2, "n", n, n_version);
         System.out.println("n=" + n + " => RMS Error=" + test(makeRandom(n)));
         i++;
         i_version = 11;
-        recordFirst("", "FFTFault", "main", 85, 1, "i", i, i_version);
+        record("", "FFTFault", "main", 85, 1, "i", i, i_version);
       }
     }
   }
@@ -259,27 +221,27 @@ public class FFTFault {
     int n_version = 2;
     int log = 0;
     log_version = 0;
-    recordFirst("", "FFTFault", "log2", 93, 1, "log", log, log_version);
+    record("", "FFTFault", "log2", 93, 1, "log", log, log_version);
     {
       int k_version = -1;
       int k = 1;
       k_version = 0;
-      recordFirst("", "FFTFault", "log2", 94, 1, "k", k, k_version);
+      record("", "FFTFault", "log2", 94, 1, "k", k, k_version);
       while (true) {
         n_version = 3;
-        recordFirst("", "FFTFault", "log2", 94, 1, "n", n, n_version);
+        record("", "FFTFault", "log2", 94, 1, "n", n, n_version);
         k_version = 1;
-        recordFirst("", "FFTFault", "log2", 94, 1, "k", k, k_version);
+        record("", "FFTFault", "log2", 94, 1, "k", k, k_version);
         if (!(k < n)) {
           break;
         }
         ;
         k *= 2;
         k_version = 2;
-        recordFirst("", "FFTFault", "log2", 94, 1, "k", k, k_version);
+        record("", "FFTFault", "log2", 94, 1, "k", k, k_version);
         log++;
         log_version = 1;
-        recordFirst("", "FFTFault", "log2", 94, 1, "log", log, log_version);
+        record("", "FFTFault", "log2", 94, 1, "log", log, log_version);
       }
     }
     if (n != (1 << log)) {
@@ -312,13 +274,13 @@ public class FFTFault {
     }
     int n = data.length / 2;
     n_version = 4;
-    recordFirst("", "FFTFault", "transform_internal", 104, 1, "n", n, n_version);
+    record("", "FFTFault", "transform_internal", 104, 1, "n", n, n_version);
     if (n == 1) {
       return;
     } // Identity operation!
     int logn = log2(n);
     logn_version = 0;
-    recordFirst("", "FFTFault", "transform_internal", 107, 1, "logn", logn, logn_version);
+    record("", "FFTFault", "transform_internal", 107, 1, "logn", logn, logn_version);
 
     /* bit reverse the input data for decimation in time algorithm */
     bitreverse(data);
@@ -330,64 +292,64 @@ public class FFTFault {
       int dual_version = -1;
       int bit = 0, dual = 1;
       dual_version = 0;
-      recordFirst("", "FFTFault", "transform_internal", 114, 1, "dual", dual, dual_version);
+      record("", "FFTFault", "transform_internal", 114, 1, "dual", dual, dual_version);
       bit_version = 0;
-      recordFirst("", "FFTFault", "transform_internal", 114, 1, "bit", bit, bit_version);
+      record("", "FFTFault", "transform_internal", 114, 1, "bit", bit, bit_version);
       while (true) {
         logn_version = 1;
-        recordFirst("", "FFTFault", "transform_internal", 114, 1, "logn", logn, logn_version);
+        record("", "FFTFault", "transform_internal", 114, 1, "logn", logn, logn_version);
         bit_version = 1;
-        recordFirst("", "FFTFault", "transform_internal", 114, 1, "bit", bit, bit_version);
+        record("", "FFTFault", "transform_internal", 114, 1, "bit", bit, bit_version);
         if (!(bit < logn)) {
           break;
         }
         double w_real = 1.0;
         w_real_version = 0;
-        recordFirst("", "FFTFault", "transform_internal", 115, 2, "w_real", w_real, w_real_version);
+        record("", "FFTFault", "transform_internal", 115, 2, "w_real", w_real, w_real_version);
         double w_imag = 0.0;
         w_imag_version = 0;
-        recordFirst("", "FFTFault", "transform_internal", 116, 2, "w_imag", w_imag, w_imag_version);
+        record("", "FFTFault", "transform_internal", 116, 2, "w_imag", w_imag, w_imag_version);
 
         double theta = 2.0 * direction * Math.PI / (2.0 * (double) dual);
         theta_version = 0;
-        recordFirst("", "FFTFault", "transform_internal", 118, 2, "theta", theta, theta_version);
+        record("", "FFTFault", "transform_internal", 118, 2, "theta", theta, theta_version);
         double s = Math.sin(theta);
         s_version = 0;
-        recordFirst("", "FFTFault", "transform_internal", 119, 2, "s", s, s_version);
+        record("", "FFTFault", "transform_internal", 119, 2, "s", s, s_version);
         double t = Math.sin(theta / 2.0);
         t_version = 0;
-        recordFirst("", "FFTFault", "transform_internal", 120, 2, "t", t, t_version);
+        record("", "FFTFault", "transform_internal", 120, 2, "t", t, t_version);
         double s2 = 2.0 * t * t;
         s2_version = 0;
-        recordFirst("", "FFTFault", "transform_internal", 121, 2, "s2", s2, s2_version);
+        record("", "FFTFault", "transform_internal", 121, 2, "s2", s2, s2_version);
 
         /* a = 0 */
         {
           int b_version = -1;
           int b = 0;
           b_version = 0;
-          recordFirst("", "FFTFault", "transform_internal", 124, 2, "b", b, b_version);
+          record("", "FFTFault", "transform_internal", 124, 2, "b", b, b_version);
           while (true) {
             b_version = 1;
-            recordFirst("", "FFTFault", "transform_internal", 124, 2, "b", b, b_version);
+            record("", "FFTFault", "transform_internal", 124, 2, "b", b, b_version);
             n_version = 5;
-            recordFirst("", "FFTFault", "transform_internal", 124, 2, "n", n, n_version);
+            record("", "FFTFault", "transform_internal", 124, 2, "n", n, n_version);
             if (!(b < n)) {
               break;
             }
             int i = 2 * b;
             i_version = 12;
-            recordFirst("", "FFTFault", "transform_internal", 125, 3, "i", i, i_version);
+            record("", "FFTFault", "transform_internal", 125, 3, "i", i, i_version);
             int j = 2 * (b + dual);
             j_version = 0;
-            recordFirst("", "FFTFault", "transform_internal", 126, 3, "j", j, j_version);
+            record("", "FFTFault", "transform_internal", 126, 3, "j", j, j_version);
 
-            double wd_real = data[j] + Fluky.flukyDouble(0, 5, gen_bad, 0);
+            double wd_real = data[j] + Fluky.flukyDouble(0, 0.5, gen_bad, 0);
             wd_real_version = 0;
-            recordFirst("", "FFTFault", "transform_internal", 128, 3, "wd_real", wd_real, wd_real_version);
+            record("", "FFTFault", "transform_internal", 128, 3, "wd_real", wd_real, wd_real_version);
             double wd_imag = data[j + 1];
             wd_imag_version = 0;
-            recordFirst("", "FFTFault", "transform_internal", 129, 3, "wd_imag", wd_imag, wd_imag_version);
+            record("", "FFTFault", "transform_internal", 129, 3, "wd_imag", wd_imag, wd_imag_version);
 
             data[j] = data[i] - wd_real;
             data[j + 1] = data[i + 1] - wd_imag;
@@ -395,7 +357,7 @@ public class FFTFault {
             data[i + 1] += wd_imag;
             b += 2 * dual;
             b_version = 2;
-            recordFirst("", "FFTFault", "transform_internal", 124, 2, "b", b, b_version);
+            record("", "FFTFault", "transform_internal", 124, 2, "b", b, b_version);
           }
         }
 
@@ -404,12 +366,12 @@ public class FFTFault {
           int a_version = -1;
           int a = 1;
           a_version = 0;
-          recordFirst("", "FFTFault", "transform_internal", 138, 2, "a", a, a_version);
+          record("", "FFTFault", "transform_internal", 138, 2, "a", a, a_version);
           while (true) {
             a_version = 1;
-            recordFirst("", "FFTFault", "transform_internal", 138, 2, "a", a, a_version);
+            record("", "FFTFault", "transform_internal", 138, 2, "a", a, a_version);
             dual_version = 1;
-            recordFirst("", "FFTFault", "transform_internal", 138, 2, "dual", dual, dual_version);
+            record("", "FFTFault", "transform_internal", 138, 2, "dual", dual, dual_version);
             if (!(a < dual)) {
               break;
             }
@@ -417,50 +379,50 @@ public class FFTFault {
             {
               double tmp_real = w_real - s * w_imag - s2 * w_real;
               tmp_real_version = 0;
-              recordFirst("", "FFTFault", "transform_internal", 141, 4, "tmp_real", tmp_real, tmp_real_version);
+              record("", "FFTFault", "transform_internal", 141, 4, "tmp_real", tmp_real, tmp_real_version);
               double tmp_imag = w_imag + s * w_real - s2 * w_imag;
               tmp_imag_version = 0;
-              recordFirst("", "FFTFault", "transform_internal", 142, 4, "tmp_imag", tmp_imag, tmp_imag_version);
+              record("", "FFTFault", "transform_internal", 142, 4, "tmp_imag", tmp_imag, tmp_imag_version);
               w_real = tmp_real;
               w_real_version = 1;
-              recordFirst("", "FFTFault", "transform_internal", 143, 4, "w_real", w_real, w_real_version);
+              record("", "FFTFault", "transform_internal", 143, 4, "w_real", w_real, w_real_version);
               w_imag = tmp_imag;
               w_imag_version = 1;
-              recordFirst("", "FFTFault", "transform_internal", 144, 4, "w_imag", w_imag, w_imag_version);
+              record("", "FFTFault", "transform_internal", 144, 4, "w_imag", w_imag, w_imag_version);
             }
             {
               int b_version = 2;
               int b = 0;
               b_version = 3;
-              recordFirst("", "FFTFault", "transform_internal", 146, 3, "b", b, b_version);
+              record("", "FFTFault", "transform_internal", 146, 3, "b", b, b_version);
               while (true) {
                 b_version = 4;
-                recordFirst("", "FFTFault", "transform_internal", 146, 3, "b", b, b_version);
+                record("", "FFTFault", "transform_internal", 146, 3, "b", b, b_version);
                 n_version = 6;
-                recordFirst("", "FFTFault", "transform_internal", 146, 3, "n", n, n_version);
+                record("", "FFTFault", "transform_internal", 146, 3, "n", n, n_version);
                 if (!(b < n)) {
                   break;
                 }
                 int i = 2 * (b + a);
                 i_version = 13;
-                recordFirst("", "FFTFault", "transform_internal", 147, 4, "i", i, i_version);
+                record("", "FFTFault", "transform_internal", 147, 4, "i", i, i_version);
                 int j = 2 * (b + a + dual);
                 j_version = 1;
-                recordFirst("", "FFTFault", "transform_internal", 148, 4, "j", j, j_version);
+                record("", "FFTFault", "transform_internal", 148, 4, "j", j, j_version);
 
                 double z1_real = data[j];
                 z1_real_version = 0;
-                recordFirst("", "FFTFault", "transform_internal", 150, 4, "z1_real", z1_real, z1_real_version);
+                record("", "FFTFault", "transform_internal", 150, 4, "z1_real", z1_real, z1_real_version);
                 double z1_imag = data[j + 1];
                 z1_imag_version = 0;
-                recordFirst("", "FFTFault", "transform_internal", 151, 4, "z1_imag", z1_imag, z1_imag_version);
+                record("", "FFTFault", "transform_internal", 151, 4, "z1_imag", z1_imag, z1_imag_version);
 
                 double wd_real = w_real * z1_real - w_imag * z1_imag;
                 wd_real_version = 1;
-                recordFirst("", "FFTFault", "transform_internal", 153, 4, "wd_real", wd_real, wd_real_version);
+                record("", "FFTFault", "transform_internal", 153, 4, "wd_real", wd_real, wd_real_version);
                 double wd_imag = w_real * z1_imag + w_imag * z1_real;
                 wd_imag_version = 1;
-                recordFirst("", "FFTFault", "transform_internal", 154, 4, "wd_imag", wd_imag, wd_imag_version);
+                record("", "FFTFault", "transform_internal", 154, 4, "wd_imag", wd_imag, wd_imag_version);
 
                 data[j] = data[i] - wd_real;
                 data[j + 1] = data[i + 1] - wd_imag;
@@ -468,24 +430,24 @@ public class FFTFault {
                 data[i + 1] += wd_imag;
                 b += 2 * dual;
                 b_version = 5;
-                recordFirst("", "FFTFault", "transform_internal", 146, 3, "b", b, b_version);
+                record("", "FFTFault", "transform_internal", 146, 3, "b", b, b_version);
               }
             }
             a++;
             a_version = 2;
-            recordFirst("", "FFTFault", "transform_internal", 138, 2, "a", a, a_version);
+            record("", "FFTFault", "transform_internal", 138, 2, "a", a, a_version);
           }
         }
         w_real_version = 2;
-        recordFirst("", "FFTFault", "transform_internal", 161, 2, "w_real", w_real, w_real_version);
+        record("", "FFTFault", "transform_internal", 161, 2, "w_real", w_real, w_real_version);
         w_imag_version = 2;
-        recordFirst("", "FFTFault", "transform_internal", 161, 2, "w_imag", w_imag, w_imag_version);
+        record("", "FFTFault", "transform_internal", 161, 2, "w_imag", w_imag, w_imag_version);
         dual *= 2;
         dual_version = 2;
-        recordFirst("", "FFTFault", "transform_internal", 114, 1, "dual", dual, dual_version);
+        record("", "FFTFault", "transform_internal", 114, 1, "dual", dual, dual_version);
         bit++;
         bit_version = 2;
-        recordFirst("", "FFTFault", "transform_internal", 114, 1, "bit", bit, bit_version);
+        record("", "FFTFault", "transform_internal", 114, 1, "bit", bit, bit_version);
       }
     }
   }
@@ -503,22 +465,22 @@ public class FFTFault {
     /* This is the Goldrader bit-reversal algorithm */
     int n = data.length / 2;
     n_version = 7;
-    recordFirst("", "FFTFault", "bitreverse", 167, 1, "n", n, n_version);
+    record("", "FFTFault", "bitreverse", 167, 1, "n", n, n_version);
     int nm1 = n - 1;
     nm1_version = 0;
-    recordFirst("", "FFTFault", "bitreverse", 168, 1, "nm1", nm1, nm1_version);
+    record("", "FFTFault", "bitreverse", 168, 1, "nm1", nm1, nm1_version);
     int i = 0;
     i_version = 14;
-    recordFirst("", "FFTFault", "bitreverse", 169, 1, "i", i, i_version);
+    record("", "FFTFault", "bitreverse", 169, 1, "i", i, i_version);
     int j = 0;
     j_version = 2;
-    recordFirst("", "FFTFault", "bitreverse", 170, 1, "j", j, j_version);
+    record("", "FFTFault", "bitreverse", 170, 1, "j", j, j_version);
     {
       while (true) {
         nm1_version = 1;
-        recordFirst("", "FFTFault", "bitreverse", 171, 1, "nm1", nm1, nm1_version);
+        record("", "FFTFault", "bitreverse", 171, 1, "nm1", nm1, nm1_version);
         i_version = 15;
-        recordFirst("", "FFTFault", "bitreverse", 171, 1, "i", i, i_version);
+        record("", "FFTFault", "bitreverse", 171, 1, "i", i, i_version);
         if (!(i < nm1)) {
           break;
         }
@@ -526,26 +488,26 @@ public class FFTFault {
         // int ii = 2*i;
         int ii = i << 1;
         ii_version = 0;
-        recordFirst("", "FFTFault", "bitreverse", 174, 2, "ii", ii, ii_version);
+        record("", "FFTFault", "bitreverse", 174, 2, "ii", ii, ii_version);
 
         // int jj = 2*j;
         int jj = j << 1;
         jj_version = 0;
-        recordFirst("", "FFTFault", "bitreverse", 177, 2, "jj", jj, jj_version);
+        record("", "FFTFault", "bitreverse", 177, 2, "jj", jj, jj_version);
 
         // int k = n / 2 ;
         int k = n >> 1;
         k_version = 3;
-        recordFirst("", "FFTFault", "bitreverse", 180, 2, "k", k, k_version);
+        record("", "FFTFault", "bitreverse", 180, 2, "k", k, k_version);
 
         if (i < j) {
           {
             double tmp_real = data[ii];
             tmp_real_version = 1;
-            recordFirst("", "FFTFault", "bitreverse", 183, 3, "tmp_real", tmp_real, tmp_real_version);
+            record("", "FFTFault", "bitreverse", 183, 3, "tmp_real", tmp_real, tmp_real_version);
             double tmp_imag = data[ii + 1];
             tmp_imag_version = 1;
-            recordFirst("", "FFTFault", "bitreverse", 184, 3, "tmp_imag", tmp_imag, tmp_imag_version);
+            record("", "FFTFault", "bitreverse", 184, 3, "tmp_imag", tmp_imag, tmp_imag_version);
             data[ii] = data[jj];
             data[ii + 1] = data[jj + 1];
             data[jj] = tmp_real;
@@ -555,35 +517,35 @@ public class FFTFault {
 
         while (true) {
           k_version = 5;
-          recordFirst("", "FFTFault", "bitreverse", 191, 2, "k", k, k_version);
+          record("", "FFTFault", "bitreverse", 191, 2, "k", k, k_version);
           j_version = 4;
-          recordFirst("", "FFTFault", "bitreverse", 191, 2, "j", j, j_version);
+          record("", "FFTFault", "bitreverse", 191, 2, "j", j, j_version);
           if (!(k <= j)) {
             break;
           }
           // j = j - k ;
           j -= k;
           j_version = 3;
-          recordFirst("", "FFTFault", "bitreverse", 193, 3, "j", j, j_version);
+          record("", "FFTFault", "bitreverse", 193, 3, "j", j, j_version);
 
           // k = k / 2 ;
           k >>= 1;
           k_version = 4;
-          recordFirst("", "FFTFault", "bitreverse", 196, 3, "k", k, k_version);
+          record("", "FFTFault", "bitreverse", 196, 3, "k", k, k_version);
         }
         j_version = 5;
-        recordFirst("", "FFTFault", "bitreverse", 197, 2, "j", j, j_version);
+        record("", "FFTFault", "bitreverse", 197, 2, "j", j, j_version);
         k_version = 6;
-        recordFirst("", "FFTFault", "bitreverse", 197, 2, "k", k, k_version);
+        record("", "FFTFault", "bitreverse", 197, 2, "k", k, k_version);
         j += k;
         j_version = 6;
-        recordFirst("", "FFTFault", "bitreverse", 198, 2, "j", j, j_version);
+        record("", "FFTFault", "bitreverse", 198, 2, "j", j, j_version);
         i++;
         i_version = 16;
-        recordFirst("", "FFTFault", "bitreverse", 171, 1, "i", i, i_version);
+        record("", "FFTFault", "bitreverse", 171, 1, "i", i, i_version);
       }
     }
     j_version = 7;
-    recordFirst("", "FFTFault", "bitreverse", 199, 1, "j", j, j_version);
+    record("", "FFTFault", "bitreverse", 199, 1, "j", j, j_version);
   }
 }

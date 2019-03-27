@@ -19,7 +19,7 @@ public class MainTestFile {
     pw.close();
     FileWriter writerOut = new FileWriter(dataFileName, true);
 
-    int numTrials = 100;
+    int numTrials = 1000;
 
     int[] Y = new int[numTrials];
 
