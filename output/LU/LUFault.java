@@ -351,7 +351,8 @@ public class LUFault {
         jp_version = 0;
         record("", "LUFault", "factor", 167, 2, "jp", jp, jp_version);
 
-        double t = Fluky.fuzzyDouble(Math.abs(A[j][j]), gen_bad, .75);
+        double t = Math.abs(A[j][j]);
+        // double t = Fluky.fuzzyDouble(A[j][j], gen_bad, 0.0);
         t_version = 0;
         record("", "LUFault", "factor", 169, 2, "t", t, t_version);
         {
@@ -374,7 +375,7 @@ public class LUFault {
                 jp = i;
                 jp_version = 1;
                 record("", "LUFault", "factor", 173, 4, "jp", jp, jp_version);
-                t = ab;
+                t = Fluky.fuzzyDouble(ab, gen_bad, .75);
                 t_version = 1;
                 record("", "LUFault", "factor", 174, 4, "t", t, t_version);
               }
@@ -417,7 +418,7 @@ public class LUFault {
             // note A(j,j), was A(jp,p) previously which was
             // guarranteed not to be zero (Label #1)
             //
-            double recp = 1.0 / A[j][j];
+            double recp = Fluky.fuzzyDouble(1.0 / A[j][j], gen_bad, .75);
             recp_version = 0;
             record("", "LUFault", "factor", 199, 3, "recp", recp, recp_version);
 

@@ -80,6 +80,8 @@ public class Converter extends Java8BaseListener {
 
   HashSet<String> allLocalVariables = new HashSet<>();
 
+  Stack<HashSet<String>> variablesInitializedInScope = new Stack<>();
+
   HashMap<String, HashSet<String>> causalMap = new HashMap<>();
 
   int scope = 0;
@@ -106,10 +108,12 @@ public class Converter extends Java8BaseListener {
   @Override
   public void enterBlock(Java8Parser.BlockContext ctx) {
     scope++;
+    variablesInitializedInScope.push(new HashSet<String>());
   }
 
   public void exitBlock(Java8Parser.BlockContext ctx) {
     scope--;
+    variablesInitializedInScope.pop();
   }
 
   // Handling basic assignment statements
@@ -170,6 +174,8 @@ public class Converter extends Java8BaseListener {
               expressionNamesSSA.add(expressionName + "_" + variableSubscripts.get(expressionName));
           }
 
+          variablesInitializedInScope.lastElement().add(variable);
+
           currentVariableSubscriptMap.put(variable, 0);
 
           insertVersionUpdateAfter(ctx.getParent().getParent().getStop(), variable);
@@ -219,6 +225,7 @@ public class Converter extends Java8BaseListener {
   public void exitAssignment(Java8Parser.AssignmentContext ctx) {
     String variable = tokens.getText(ctx.leftHandSide());
     int subscript = 0;
+    variablesInitializedInScope.lastElement().add(variable);
     if (ctx.leftHandSide().expressionName() == null)
       return;
 
@@ -299,8 +306,13 @@ public class Converter extends Java8BaseListener {
     String className = ctx.getChild(2).getText();
     this.className = className;
     TerminalNode t = (TerminalNode) ctx.getChild(2);
+    variablesInitializedInScope.push(new HashSet<String>());
     // rewriter.replace(t.getSymbol(), className + "Fault");
+  }
 
+  @Override
+  public void exitNormalClassDeclaration(Java8Parser.NormalClassDeclarationContext ctx) {
+    variablesInitializedInScope.pop();
   }
 
   public void enterCompilationUnit(Java8Parser.CompilationUnitContext ctx) {
@@ -350,8 +362,10 @@ public class Converter extends Java8BaseListener {
         if (subscriptsBeforeMethod.containsKey(variable))
           rewriter.insertAfter(ctx.getStart(),
               "int " + variable + "_version" + " = " + subscriptsBeforeMethod.get(variable) + ";");
-        else
+        else {
           rewriter.insertAfter(ctx.getStart(), "int " + variable + "_version" + " = -1;");
+          variableSubscripts.put(variable, -1);
+        }
         variablesTrackedInMethod.add(variable);
       }
     }
@@ -498,7 +512,8 @@ public class Converter extends Java8BaseListener {
     rewriter.insertBefore(ctx.statement().getStart(), "{");
     rewriter.insertAfter(ctx.statement().getStop(), "}");
     for (String var : predicateBlockVariablesStack.pop()) {
-      if (!variableSubscripts.containsKey(var) || variablesDeclaredInPredicate.contains(var))
+      if (!variableSubscripts.containsKey(var) || variablesDeclaredInPredicate.contains(var)
+          || !variablesInitializedInScope.lastElement().contains(var))
         continue;
       int subscript = currentVariableSubscriptMap.get(var);
       ArrayList<String> confounders = new ArrayList<>();
@@ -556,7 +571,8 @@ public class Converter extends Java8BaseListener {
 
     HashSet<String> predicateBlockVariables = predicateBlockVariablesStack.pop();
     for (String var : predicateBlockVariables) {
-      if (variablesDeclaredInPredicate.contains(var))
+      if (!variableSubscripts.containsKey(var) || variablesDeclaredInPredicate.contains(var)
+          || !variablesInitializedInScope.lastElement().contains(var))
         continue;
 
       int subscript = currentVariableSubscriptMap.get(var);
@@ -568,7 +584,8 @@ public class Converter extends Java8BaseListener {
 
     HashSet<String> allAddedVariables = new HashSet<>();
     for (String var : ifBlockVariables) {
-      if (!variableSubscripts.containsKey(var) || variablesDeclaredInPredicate.contains(var))
+      if (!variableSubscripts.containsKey(var) || variablesDeclaredInPredicate.contains(var)
+          || !variablesInitializedInScope.lastElement().contains(var))
         continue;
       if (variableSubscripts.containsKey(var)) {
         causalMap.put(var + "_" + variableSubscripts.get(var), new HashSet<String>());
@@ -579,7 +596,8 @@ public class Converter extends Java8BaseListener {
     }
 
     for (String var : elseBlockVariables) {
-      if (!variableSubscripts.containsKey(var) || variablesDeclaredInPredicate.contains(var))
+      if (!variableSubscripts.containsKey(var) || variablesDeclaredInPredicate.contains(var)
+          || !variablesInitializedInScope.lastElement().contains(var))
         continue;
       causalMap.put(var + "_" + variableSubscripts.get(var), new HashSet<String>());
       causalMap.get(var + "_" + variableSubscripts.get(var)).add(var + "_" + elseBranchVariableSubscripts.get(var));
@@ -588,7 +606,8 @@ public class Converter extends Java8BaseListener {
     }
 
     for (String var : allAddedVariables) {
-      if (!variableSubscripts.containsKey(var) || variablesDeclaredInPredicate.contains(var))
+      if (!variableSubscripts.containsKey(var) || variablesDeclaredInPredicate.contains(var)
+          || !variablesInitializedInScope.lastElement().contains(var))
         continue;
       if (causalMap.get(var + "_" + variableSubscripts.get(var)).size() == 1) {
         causalMap.get(var + "_" + variableSubscripts.get(var)).add(var + "_" + varSubscriptsBeforePredicate.get(var));
@@ -637,7 +656,8 @@ public class Converter extends Java8BaseListener {
 
     HashSet<String> allAddedVariables = new HashSet<>();
     for (String var : ifBlockVariables) {
-      if (!variableSubscripts.containsKey(var) || variablesDeclaredInPredicate.contains(var))
+      if (!variableSubscripts.containsKey(var) || variablesDeclaredInPredicate.contains(var)
+          || !variablesInitializedInScope.lastElement().contains(var))
         continue;
       causalMap.put(var + "_" + variableSubscripts.get(var), new HashSet<String>());
       causalMap.get(var + "_" + variableSubscripts.get(var)).add(var + "_" + ifBranchVariableSubscripts.get(var));
@@ -645,7 +665,8 @@ public class Converter extends Java8BaseListener {
     }
 
     for (String var : elseBlockVariables) {
-      if (!variableSubscripts.containsKey(var) || variablesDeclaredInPredicate.contains(var))
+      if (!variableSubscripts.containsKey(var) || variablesDeclaredInPredicate.contains(var)
+          || !variablesInitializedInScope.lastElement().contains(var))
         continue;
       if (!causalMap.containsKey(var + "_" + variableSubscripts.get(var)))
         causalMap.put(var + "_" + variableSubscripts.get(var), new HashSet<String>());
@@ -655,7 +676,8 @@ public class Converter extends Java8BaseListener {
     }
 
     for (String var : allAddedVariables) {
-      if (!variableSubscripts.containsKey(var) || variablesDeclaredInPredicate.contains(var))
+      if (!variableSubscripts.containsKey(var) || variablesDeclaredInPredicate.contains(var)
+          || !variablesInitializedInScope.lastElement().contains(var))
         continue;
       if (causalMap.get(var + "_" + variableSubscripts.get(var)).size() == 1) {
         causalMap.get(var + "_" + variableSubscripts.get(var)).add(var + "_" + varSubscriptsBeforePredicate.get(var));
@@ -761,7 +783,8 @@ public class Converter extends Java8BaseListener {
 
     // Record values of all variables used inside the predicate block
     for (String variable : predicateBlockVariablesStack.pop()) {
-      if (variablesDeclaredInPredicate.contains(variable) || !variableSubscripts.containsKey(variable))
+      if (variablesDeclaredInPredicate.contains(variable) || !variableSubscripts.containsKey(variable)
+          || !variablesInitializedInScope.lastElement().contains(variable))
         continue;
 
       ArrayList<String> confounders = new ArrayList<>();
@@ -838,7 +861,8 @@ public class Converter extends Java8BaseListener {
 
     // Record values of all variables used inside the predicate block
     for (String variable : predicateBlockVariablesStack.pop()) {
-      if (variablesDeclaredInPredicate.contains(variable) || !variableSubscripts.containsKey(variable))
+      if (variablesDeclaredInPredicate.contains(variable) || !variableSubscripts.containsKey(variable)
+          || !variablesInitializedInScope.lastElement().contains(variable))
         continue;
 
       ArrayList<String> confounders = new ArrayList<>();
@@ -927,7 +951,8 @@ public class Converter extends Java8BaseListener {
 
     for (String variable : predicateBlockVariablesStack.pop()) {
       if (!(forInitDeclarations.contains(variable))) {
-        if (variablesDeclaredInPredicate.contains(variable) || !variableSubscripts.containsKey(variable))
+        if (variablesDeclaredInPredicate.contains(variable) || !variableSubscripts.containsKey(variable)
+            || !variablesInitializedInScope.lastElement().contains(variable))
           continue;
 
         ArrayList<String> confounders = new ArrayList<>();
@@ -939,6 +964,8 @@ public class Converter extends Java8BaseListener {
 
         insertVersionUpdateAfter(ctx.getStop(), variable);
         insertRecordStatementAfter(ctx.getStop(), variable, lineNumber);
+        rewriter.insertAfter(ctx.getStop(),
+            "// " + variable + " version: " + varSubscriptsBeforePredicate.get(variable));
         // System.out.println(variable + "_" + variableSubscripts.get(variable));
         String mergeVar = variable + "_" + variableSubscripts.get(variable);
 
@@ -1026,7 +1053,8 @@ public class Converter extends Java8BaseListener {
     HashSet<String> forInitDeclarations = getAllForInitDeclarations(ctx.forInit());
     for (String variable : predicateBlockVariablesStack.pop()) {
       if (!(forInitDeclarations.contains(variable))) {
-        if (variablesDeclaredInPredicate.contains(variable) || !variableSubscripts.containsKey(variable))
+        if (variablesDeclaredInPredicate.contains(variable) || !variableSubscripts.containsKey(variable)
+            || !variablesInitializedInScope.lastElement().contains(variable))
           continue;
         ArrayList<String> confounders = new ArrayList<>();
         confounders.add(variable + "_" + varSubscriptsBeforePredicate.get(variable));
@@ -1034,6 +1062,8 @@ public class Converter extends Java8BaseListener {
 
         insertVersionUpdateAfter(ctx.getStop(), variable);
         insertRecordStatementAfter(ctx.getStop(), variable, ctx.getStop().getLine());
+        rewriter.insertAfter(ctx.getStop(),
+            "// " + variable + " version: " + varSubscriptsBeforePredicate.get(variable));
 
         // System.out.println(variable + "_" + variableSubscripts.get(variable));
         if (variableSubscripts.containsKey(variable)) {
