@@ -1,8 +1,10 @@
+package org.apache.commons.math3.stat.regression;
+
 import java.io.BufferedReader;
 import java.io.BufferedWriter;
 import java.io.OutputStreamWriter;
 import java.io.FileOutputStream;
-import java.io.OutputStream;;
+import java.io.OutputStream;
 import java.io.FileReader;
 import java.io.IOException;
 import java.util.ArrayList;
@@ -21,25 +23,34 @@ public class StructuredDataCollector {
       reader = new BufferedReader(new FileReader(filePath));
       String line = reader.readLine();
       HashMap<String, String> variableVersionValueMap = new HashMap<>();
+      int numExecutions = 0;
       while (line != null) {
+
         if (line.equals("*** new execution ***")) {
           HashMap<String, Boolean> variableVersionValueArrayChecklist = new HashMap<>();
-          for (String variableVersion : variableVersionValueArrayMap.keySet()) {
-            variableVersionValueArrayChecklist.put(variableVersion, false);
+          for (String variable : variableVersionValueArrayMap.keySet()) {
+            variableVersionValueArrayChecklist.put(variable, false);
           }
-          for (String variableVersion : variableVersionValueMap.keySet()) {
-            variableVersionValueArrayMap.putIfAbsent(variableVersion, new ArrayList<>());
-            variableVersionValueArrayMap.get(variableVersion).add(variableVersionValueMap.get(variableVersion));
-            variableVersionValueArrayChecklist.put(variableVersion, true);
+          for (String variable : variableVersionValueMap.keySet()) {
+            if (!variableVersionValueArrayMap.containsKey(variable)) {
+              variableVersionValueArrayMap.put(variable, new ArrayList<String>());
+              for (int i = 0; i < numExecutions; i++) {
+                variableVersionValueArrayMap.get(variable).add("NA");
+              }
+              variableVersionValueArrayChecklist.put(variable, true);
+            } else {
+              variableVersionValueArrayMap.get(variable).add(variableVersionValueMap.get(variable));
+              variableVersionValueArrayChecklist.put(variable, true);
+            }
           }
-          for (String variableVersion : variableVersionValueArrayMap.keySet()) {
-            if (variableVersionValueArrayChecklist.get(variableVersion) == false) {
-              variableVersionValueArrayMap.putIfAbsent(variableVersion, new ArrayList<>());
-              variableVersionValueArrayMap.get(variableVersion).add("NA");
+          for (String variable : variableVersionValueArrayChecklist.keySet()) {
+            if (!variableVersionValueArrayChecklist.get(variable)) {
+              variableVersionValueArrayMap.get(variable).add("NA");
             }
           }
           variableVersionValueMap.clear();
           line = reader.readLine();
+          numExecutions++;
           continue;
         }
         String[] row = line.split(",");
@@ -57,6 +68,9 @@ public class StructuredDataCollector {
           value = 0.0;
         else
           value = Double.parseDouble(row[6]);
+
+        if (variable.startsWith("_"))
+          variable = "UNDERSCORE" + variable;
 
         variableVersionValueMap.put(variable + "_" + version, Double.toString(value));
         // read next line
@@ -76,7 +90,7 @@ public class StructuredDataCollector {
             System.out.println("Double parsed");
             writer.write(String.format("%15g", Double.parseDouble(list.get(i))));
           } catch (NumberFormatException e) {
-            writer.write(String.format("%15s", list.get(i)));
+            writer.write(String.format("%15s", "NA"));
           }
         }
         writer.write("\n");
@@ -110,6 +124,8 @@ public class StructuredDataCollector {
     for (String t : covariant.keySet()) {
       if (!usedVariables.contains(t))
         continue;
+      if (t.startsWith("_"))
+        t = "UNDERSCORE" + t;
       //        for (Value t : treatNames){
       String vfn = varFrameName;
       // for confounder
@@ -123,6 +139,8 @@ public class StructuredDataCollector {
       for (String c : set) {
         if (!usedVariables.contains(c))
           continue;
+        if (c.startsWith("_"))
+          c = "UNDERSCORE" + c;
         writer.write(", " + c + "=" + vfn + "$" + c);
       }
 
