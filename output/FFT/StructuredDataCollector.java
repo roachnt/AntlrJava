@@ -2,7 +2,7 @@ import java.io.BufferedReader;
 import java.io.BufferedWriter;
 import java.io.OutputStreamWriter;
 import java.io.FileOutputStream;
-import java.io.OutputStream;;
+import java.io.OutputStream;
 import java.io.FileReader;
 import java.io.IOException;
 import java.util.ArrayList;
@@ -15,20 +15,40 @@ public class StructuredDataCollector {
     // 7 Columns of data
     // Class, method, line, scope, variable, version, value
     BufferedReader reader;
-    HashMap<String, ArrayList<Double>> variableVersionValueArrayMap = new HashMap<>();
+    HashMap<String, ArrayList<String>> variableVersionValueArrayMap = new HashMap<>();
     try {
       // Change name of data file accordingly
       reader = new BufferedReader(new FileReader(filePath));
       String line = reader.readLine();
-      HashMap<String, Double> variableVersionValueMap = new HashMap<>();
+      HashMap<String, String> variableVersionValueMap = new HashMap<>();
+      int numExecutions = 0;
       while (line != null) {
+
         if (line.equals("*** new execution ***")) {
-          for (String variableVersion : variableVersionValueMap.keySet()) {
-            variableVersionValueArrayMap.putIfAbsent(variableVersion, new ArrayList<>());
-            variableVersionValueArrayMap.get(variableVersion).add(variableVersionValueMap.get(variableVersion));
+          HashMap<String, Boolean> variableVersionValueArrayChecklist = new HashMap<>();
+          for (String variable : variableVersionValueArrayMap.keySet()) {
+            variableVersionValueArrayChecklist.put(variable, false);
+          }
+          for (String variable : variableVersionValueMap.keySet()) {
+            if (!variableVersionValueArrayMap.containsKey(variable)) {
+              variableVersionValueArrayMap.put(variable, new ArrayList<String>());
+              for (int i = 0; i < numExecutions; i++) {
+                variableVersionValueArrayMap.get(variable).add("NA");
+              }
+              variableVersionValueArrayChecklist.put(variable, true);
+            } else {
+              variableVersionValueArrayMap.get(variable).add(variableVersionValueMap.get(variable));
+              variableVersionValueArrayChecklist.put(variable, true);
+            }
+          }
+          for (String variable : variableVersionValueArrayChecklist.keySet()) {
+            if (!variableVersionValueArrayChecklist.get(variable)) {
+              variableVersionValueArrayMap.get(variable).add("NA");
+            }
           }
           variableVersionValueMap.clear();
           line = reader.readLine();
+          numExecutions++;
           continue;
         }
         String[] row = line.split(",");
@@ -39,9 +59,18 @@ public class StructuredDataCollector {
         // String scope = row[3];
         String variable = row[4];
         String version = row[5];
-        Double value = Double.parseDouble(row[6]);
+        Double value;
+        if (row[6].equals("true"))
+          value = 1.0;
+        else if (row[6].equals("false"))
+          value = 0.0;
+        else
+          value = Double.parseDouble(row[6]);
 
-        variableVersionValueMap.put(variable + "_" + version, value);
+        if (variable.startsWith("_"))
+          variable = "UNDERSCORE" + variable;
+
+        variableVersionValueMap.put(variable + "_" + version, Double.toString(value));
         // read next line
         line = reader.readLine();
       }
@@ -49,12 +78,18 @@ public class StructuredDataCollector {
 
       BufferedWriter writer = new BufferedWriter(new OutputStreamWriter(new FileOutputStream("newoutput.txt")));
 
+      System.out.println(variableVersionValueArrayMap);
       for (String s : variableVersionValueArrayMap.keySet()) {
-        ArrayList<Double> list = variableVersionValueArrayMap.get(s);
+        ArrayList<String> list = variableVersionValueArrayMap.get(s);
 
         writer.write(String.format("%30s", s));
         for (int i = 0; i < list.size(); i++) {
-          writer.write(String.format("%15g", list.get(i)));
+          try {
+            System.out.println("Double parsed");
+            writer.write(String.format("%15g", Double.parseDouble(list.get(i))));
+          } catch (NumberFormatException e) {
+            writer.write(String.format("%15s", "NA"));
+          }
         }
         writer.write("\n");
         writer.flush();
@@ -87,6 +122,8 @@ public class StructuredDataCollector {
     for (String t : covariant.keySet()) {
       if (!usedVariables.contains(t))
         continue;
+      if (t.startsWith("_"))
+        t = "UNDERSCORE" + t;
       //        for (Value t : treatNames){
       String vfn = varFrameName;
       // for confounder
@@ -100,6 +137,8 @@ public class StructuredDataCollector {
       for (String c : set) {
         if (!usedVariables.contains(c))
           continue;
+        if (c.startsWith("_"))
+          c = "UNDERSCORE" + c;
         writer.write(", " + c + "=" + vfn + "$" + c);
       }
 

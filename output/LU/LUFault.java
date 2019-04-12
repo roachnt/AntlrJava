@@ -8,19 +8,30 @@
 import java.io.BufferedWriter;
 import java.io.FileWriter;
 import java.io.IOException;
+import java.util.HashMap;
 
 public class LUFault {
+  static HashMap<String, String> __versionMap__ = new HashMap<>();
+
   public static void record(String packageName, String clazz, String method, int line, int staticScope,
-      String variableName, Object vaLUFaulte, int version) {
+      String variableName, Object value, int version) {
+    __versionMap__.putIfAbsent(variableName + "_" + version, clazz + "," + method + "," + line + "," + staticScope + ","
+        + variableName + "," + version + "," + value + "\n");
+    __versionMap__.put(variableName + "_" + version, clazz + "," + method + "," + line + "," + staticScope + ","
+        + variableName + "," + version + "," + value + "\n");
+  }
+
+  public static void writeOutVariables() {
     BufferedWriter writer = null;
     try {
-      writer = new BufferedWriter(new FileWriter(clazz + "_output.txt", true));
+      writer = new BufferedWriter(new FileWriter("output.txt", true));
     } catch (IOException e) {
       System.out.println(e.getMessage());
     }
     try {
-      writer.append(clazz + "," + method + "," + line + "," + staticScope + "," + variableName + "," + version + ","
-          + vaLUFaulte + "\n");
+      for (String variableVersion : __versionMap__.keySet()) {
+        writer.append(__versionMap__.get(variableVersion));
+      }
       writer.close();
     } catch (Exception e) {
       System.out.println(e.getMessage());
@@ -241,6 +252,7 @@ public class LUFault {
 
   public double[][] getLUFault() {
     System.out.println("inside getLUFault");
+    writeOutVariables();
     return new_copy(LUFault_);
   }
 
@@ -375,7 +387,8 @@ public class LUFault {
                 jp = i;
                 jp_version = 1;
                 record("", "LUFault", "factor", 173, 4, "jp", jp, jp_version);
-                t = Fluky.fuzzyDouble(ab, gen_bad, .75);
+                // t = Fluky.fuzzyDouble(ab, gen_bad, .75);
+                t = ab;
                 t_version = 1;
                 record("", "LUFault", "factor", 174, 4, "t", t, t_version);
               }
@@ -418,7 +431,7 @@ public class LUFault {
             // note A(j,j), was A(jp,p) previously which was
             // guarranteed not to be zero (Label #1)
             //
-            double recp = Fluky.fuzzyDouble(1.0 / A[j][j], gen_bad, .75);
+            double recp = Fluky.fuzzyDouble(1.0 / A[j][j], gen_bad, .25);
             recp_version = 0;
             record("", "LUFault", "factor", 199, 3, "recp", recp, recp_version);
 

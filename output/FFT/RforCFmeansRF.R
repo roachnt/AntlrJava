@@ -50,47 +50,41 @@ results[["j_1"]] <- CFmeansForDecileBinsRF(fault_binerrs_j_1_treat_df, "Y", "j_1
 fault_binerrs_j_3_treat_df <- data.frame(Y=fault_binerrs_all$Y, j_3=fault_binerrs_all$j_3, k_3=fault_binerrs_all$k_3)
 results[["j_3"]] <- CFmeansForDecileBinsRF(fault_binerrs_j_3_treat_df, "Y", "j_3")
 
-fault_binerrs_j_6_treat_df <- data.frame(Y=fault_binerrs_all$Y, j_6=fault_binerrs_all$j_6, k_6=fault_binerrs_all$k_6)
+fault_binerrs_j_6_treat_df <- data.frame(Y=fault_binerrs_all$Y, j_6=fault_binerrs_all$j_6, j_5=fault_binerrs_all$j_5, j_2=fault_binerrs_all$j_2)
 results[["j_6"]] <- CFmeansForDecileBinsRF(fault_binerrs_j_6_treat_df, "Y", "j_6")
 
 fault_binerrs_wd_imag_1_treat_df <- data.frame(Y=fault_binerrs_all$Y, wd_imag_1=fault_binerrs_all$wd_imag_1, w_imag_1=fault_binerrs_all$w_imag_1, z1_imag_0=fault_binerrs_all$z1_imag_0, w_real_1=fault_binerrs_all$w_real_1, z1_real_0=fault_binerrs_all$z1_real_0)
 results[["wd_imag_1"]] <- CFmeansForDecileBinsRF(fault_binerrs_wd_imag_1_treat_df, "Y", "wd_imag_1")
 
-fault_binerrs_j_5_treat_df <- data.frame(Y=fault_binerrs_all$Y, j_5=fault_binerrs_all$j_5, j_2=fault_binerrs_all$j_2, j_4=fault_binerrs_all$j_4)
+fault_binerrs_j_5_treat_df <- data.frame(Y=fault_binerrs_all$Y, j_5=fault_binerrs_all$j_5, k_6=fault_binerrs_all$k_6)
 results[["j_5"]] <- CFmeansForDecileBinsRF(fault_binerrs_j_5_treat_df, "Y", "j_5")
-
-fault_binerrs_n_4_treat_df <- data.frame(Y=fault_binerrs_all$Y, n_4=fault_binerrs_all$n_4)
-results[["n_4"]] <- CFmeansForDecileBinsRF(fault_binerrs_n_4_treat_df, "Y", "n_4")
 
 fault_binerrs_wd_imag_0_treat_df <- data.frame(Y=fault_binerrs_all$Y, wd_imag_0=fault_binerrs_all$wd_imag_0, j_0=fault_binerrs_all$j_0)
 results[["wd_imag_0"]] <- CFmeansForDecileBinsRF(fault_binerrs_wd_imag_0_treat_df, "Y", "wd_imag_0")
 
-fault_binerrs_n_3_treat_df <- data.frame(Y=fault_binerrs_all$Y, n_3=fault_binerrs_all$n_3)
-results[["n_3"]] <- CFmeansForDecileBinsRF(fault_binerrs_n_3_treat_df, "Y", "n_3")
-
-fault_binerrs_j_7_treat_df <- data.frame(Y=fault_binerrs_all$Y, j_7=fault_binerrs_all$j_7, j_6=fault_binerrs_all$j_6, j_2=fault_binerrs_all$j_2)
-results[["j_7"]] <- CFmeansForDecileBinsRF(fault_binerrs_j_7_treat_df, "Y", "j_7")
+fault_binerrs_n_6_treat_df <- data.frame(Y=fault_binerrs_all$Y, n_6=fault_binerrs_all$n_6)
+results[["n_6"]] <- CFmeansForDecileBinsRF(fault_binerrs_n_6_treat_df, "Y", "n_6")
 
 fault_binerrs_t_0_treat_df <- data.frame(Y=fault_binerrs_all$Y, t_0=fault_binerrs_all$t_0, theta_0=fault_binerrs_all$theta_0)
 results[["t_0"]] <- CFmeansForDecileBinsRF(fault_binerrs_t_0_treat_df, "Y", "t_0")
 
-fault_binerrs_n_6_treat_df <- data.frame(Y=fault_binerrs_all$Y, n_6=fault_binerrs_all$n_6, n_5=fault_binerrs_all$n_5)
-results[["n_6"]] <- CFmeansForDecileBinsRF(fault_binerrs_n_6_treat_df, "Y", "n_6")
+fault_binerrs_n_5_treat_df <- data.frame(Y=fault_binerrs_all$Y, n_5=fault_binerrs_all$n_5, n_4=fault_binerrs_all$n_4)
+results[["n_5"]] <- CFmeansForDecileBinsRF(fault_binerrs_n_5_treat_df, "Y", "n_5")
 
 fault_binerrs_s2_0_treat_df <- data.frame(Y=fault_binerrs_all$Y, s2_0=fault_binerrs_all$s2_0, t_0=fault_binerrs_all$t_0)
 results[["s2_0"]] <- CFmeansForDecileBinsRF(fault_binerrs_s2_0_treat_df, "Y", "s2_0")
 
-fault_binerrs_n_5_treat_df <- data.frame(Y=fault_binerrs_all$Y, n_5=fault_binerrs_all$n_5, n_4=fault_binerrs_all$n_4)
-results[["n_5"]] <- CFmeansForDecileBinsRF(fault_binerrs_n_5_treat_df, "Y", "n_5")
+fault_binerrs_n_8_treat_df <- data.frame(Y=fault_binerrs_all$Y, n_8=fault_binerrs_all$n_8, n_7=fault_binerrs_all$n_7)
+results[["n_8"]] <- CFmeansForDecileBinsRF(fault_binerrs_n_8_treat_df, "Y", "n_8")
 
-fault_binerrs_n_7_treat_df <- data.frame(Y=fault_binerrs_all$Y, n_7=fault_binerrs_all$n_7)
+fault_binerrs_n_7_treat_df <- data.frame(Y=fault_binerrs_all$Y, n_7=fault_binerrs_all$n_7, n_6=fault_binerrs_all$n_6)
 results[["n_7"]] <- CFmeansForDecileBinsRF(fault_binerrs_n_7_treat_df, "Y", "n_7")
+
+fault_binerrs_n_9_treat_df <- data.frame(Y=fault_binerrs_all$Y, n_9=fault_binerrs_all$n_9)
+results[["n_9"]] <- CFmeansForDecileBinsRF(fault_binerrs_n_9_treat_df, "Y", "n_9")
 
 fault_binerrs_w_imag_1_treat_df <- data.frame(Y=fault_binerrs_all$Y, w_imag_1=fault_binerrs_all$w_imag_1, tmp_imag_0=fault_binerrs_all$tmp_imag_0)
 results[["w_imag_1"]] <- CFmeansForDecileBinsRF(fault_binerrs_w_imag_1_treat_df, "Y", "w_imag_1")
-
-fault_binerrs_w_imag_2_treat_df <- data.frame(Y=fault_binerrs_all$Y, w_imag_2=fault_binerrs_all$w_imag_2, w_imag_1=fault_binerrs_all$w_imag_1, w_imag_0=fault_binerrs_all$w_imag_0)
-results[["w_imag_2"]] <- CFmeansForDecileBinsRF(fault_binerrs_w_imag_2_treat_df, "Y", "w_imag_2")
 
 fault_binerrs_w_imag_0_treat_df <- data.frame(Y=fault_binerrs_all$Y, w_imag_0=fault_binerrs_all$w_imag_0)
 results[["w_imag_0"]] <- CFmeansForDecileBinsRF(fault_binerrs_w_imag_0_treat_df, "Y", "w_imag_0")
@@ -98,13 +92,13 @@ results[["w_imag_0"]] <- CFmeansForDecileBinsRF(fault_binerrs_w_imag_0_treat_df,
 fault_binerrs_jj_0_treat_df <- data.frame(Y=fault_binerrs_all$Y, jj_0=fault_binerrs_all$jj_0, j_2=fault_binerrs_all$j_2)
 results[["jj_0"]] <- CFmeansForDecileBinsRF(fault_binerrs_jj_0_treat_df, "Y", "jj_0")
 
-fault_binerrs_logn_0_treat_df <- data.frame(Y=fault_binerrs_all$Y, logn_0=fault_binerrs_all$logn_0, n_4=fault_binerrs_all$n_4)
+fault_binerrs_logn_0_treat_df <- data.frame(Y=fault_binerrs_all$Y, logn_0=fault_binerrs_all$logn_0, n_6=fault_binerrs_all$n_6)
 results[["logn_0"]] <- CFmeansForDecileBinsRF(fault_binerrs_logn_0_treat_df, "Y", "logn_0")
 
 fault_binerrs_z1_imag_0_treat_df <- data.frame(Y=fault_binerrs_all$Y, z1_imag_0=fault_binerrs_all$z1_imag_0, j_1=fault_binerrs_all$j_1)
 results[["z1_imag_0"]] <- CFmeansForDecileBinsRF(fault_binerrs_z1_imag_0_treat_df, "Y", "z1_imag_0")
 
-fault_binerrs_nm1_0_treat_df <- data.frame(Y=fault_binerrs_all$Y, nm1_0=fault_binerrs_all$nm1_0, n_7=fault_binerrs_all$n_7)
+fault_binerrs_nm1_0_treat_df <- data.frame(Y=fault_binerrs_all$Y, nm1_0=fault_binerrs_all$nm1_0, n_9=fault_binerrs_all$n_9)
 results[["nm1_0"]] <- CFmeansForDecileBinsRF(fault_binerrs_nm1_0_treat_df, "Y", "nm1_0")
 
 fault_binerrs_logn_1_treat_df <- data.frame(Y=fault_binerrs_all$Y, logn_1=fault_binerrs_all$logn_1, logn_0=fault_binerrs_all$logn_0)
@@ -134,13 +128,13 @@ results[["tmp_real_1"]] <- CFmeansForDecileBinsRF(fault_binerrs_tmp_real_1_treat
 fault_binerrs_k_1_treat_df <- data.frame(Y=fault_binerrs_all$Y, k_1=fault_binerrs_all$k_1, k_0=fault_binerrs_all$k_0, k_2=fault_binerrs_all$k_2)
 results[["k_1"]] <- CFmeansForDecileBinsRF(fault_binerrs_k_1_treat_df, "Y", "k_1")
 
-fault_binerrs_k_3_treat_df <- data.frame(Y=fault_binerrs_all$Y, k_3=fault_binerrs_all$k_3, n_7=fault_binerrs_all$n_7)
+fault_binerrs_k_3_treat_df <- data.frame(Y=fault_binerrs_all$Y, k_3=fault_binerrs_all$k_3, n_9=fault_binerrs_all$n_9)
 results[["k_3"]] <- CFmeansForDecileBinsRF(fault_binerrs_k_3_treat_df, "Y", "k_3")
 
 fault_binerrs_k_2_treat_df <- data.frame(Y=fault_binerrs_all$Y, k_2=fault_binerrs_all$k_2, k_1=fault_binerrs_all$k_1)
 results[["k_2"]] <- CFmeansForDecileBinsRF(fault_binerrs_k_2_treat_df, "Y", "k_2")
 
-fault_binerrs_theta_0_treat_df <- data.frame(Y=fault_binerrs_all$Y, theta_0=fault_binerrs_all$theta_0, dual_0=fault_binerrs_all$dual_0)
+fault_binerrs_theta_0_treat_df <- data.frame(Y=fault_binerrs_all$Y, theta_0=fault_binerrs_all$theta_0, direction_0=fault_binerrs_all$direction_0, dual_0=fault_binerrs_all$dual_0)
 results[["theta_0"]] <- CFmeansForDecileBinsRF(fault_binerrs_theta_0_treat_df, "Y", "theta_0")
 
 fault_binerrs_ii_0_treat_df <- data.frame(Y=fault_binerrs_all$Y, ii_0=fault_binerrs_all$ii_0, i_15=fault_binerrs_all$i_15)

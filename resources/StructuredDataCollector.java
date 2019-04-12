@@ -1,5 +1,3 @@
-package org.apache.commons.math3.stat.regression;
-
 import java.io.BufferedReader;
 import java.io.BufferedWriter;
 import java.io.OutputStreamWriter;

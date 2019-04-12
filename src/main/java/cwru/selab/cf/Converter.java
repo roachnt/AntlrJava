@@ -180,6 +180,7 @@ public class Converter extends Java8BaseListener {
 
           insertVersionUpdateAfter(ctx.getParent().getParent().getStop(), variable);
           insertRecordStatementAfter(ctx.getParent().getStop(), variable, lineNumber);
+          // System.out.println(variable + " " + variableSubscripts.get(variable));
 
           if (variableSubscripts.containsKey(variable)) {
             causalMap.put(variable + "_" + variableSubscripts.get(variable), new HashSet<String>());
@@ -287,12 +288,11 @@ public class Converter extends Java8BaseListener {
     variableTypeMap.put(varName, varType);
     currentVariableSubscriptMap.put(varName, 0);
     if (!variableSubscripts.containsKey(varName))
-      variableSubscripts.put(varName, 0);
+      variableSubscripts.put(varName, -1);
   }
 
   // When entering the method, create the SSA form of the parameters to the body of the method
   // They will be inserted once the parser exits the method body
-  String initializeFormalParams = "";
 
   @Override
   public void enterMethodDeclarator(Java8Parser.MethodDeclaratorContext ctx) {
@@ -303,9 +303,14 @@ public class Converter extends Java8BaseListener {
 
   @Override
   public void enterNormalClassDeclaration(Java8Parser.NormalClassDeclarationContext ctx) {
-    String className = ctx.getChild(2).getText();
+    int classTokenNumber = -1;
+    for (int i = 0; i < ctx.getChildCount(); i++) {
+      if (ctx.getChild(i).getText().equals("class"))
+        classTokenNumber = i;
+    }
+    String className = ctx.getChild(classTokenNumber + 1).getText();
     this.className = className;
-    TerminalNode t = (TerminalNode) ctx.getChild(2);
+    // TerminalNode t = (TerminalNode) ctx.getChild(2);
     variablesInitializedInScope.push(new HashSet<String>());
     // rewriter.replace(t.getSymbol(), className + "Fault");
   }
@@ -318,18 +323,20 @@ public class Converter extends Java8BaseListener {
   public void enterCompilationUnit(Java8Parser.CompilationUnitContext ctx) {
     if (ctx.packageDeclaration() != null)
       rewriter.insertAfter(ctx.packageDeclaration().getStop(),
-          "import java.io.BufferedWriter;import java.io.FileWriter;import java.io.IOException;");
+          "import java.io.BufferedWriter;import java.io.FileWriter;import java.io.IOException;import java.util.HashMap;");
     else {
       rewriter.insertBefore(ctx.getStart(),
-          "import java.io.BufferedWriter;import java.io.FileWriter;import java.io.IOException;");
+          "import java.io.BufferedWriter;import java.io.FileWriter;import java.io.IOException;import java.util.HashMap;");
     }
   }
 
   @Override
   public void enterClassBody(Java8Parser.ClassBodyContext ctx) {
-    rewriter.insertAfter(ctx.getStart(),
-        "public static void record(String packageName, String clazz, String method, int line, int staticScope,String variableName, Object value, int version) {BufferedWriter writer = null;try {writer = new BufferedWriter(new FileWriter(\"output.txt\", true));} catch (IOException e) {System.out.println(e.getMessage());}try {writer.append(clazz + \",\" + method + \",\" + line + \",\" + staticScope + \",\" + variableName + \",\"+ version + \",\" + value + \"\\n\");writer.close();} catch (Exception e) {System.out.println(e.getMessage());}}");
+    // rewriter.insertAfter(ctx.getStart(),
+    //     "public static void record(String packageName, String clazz, String method, int line, int staticScope,String variableName, Object value, int version) {BufferedWriter writer = null;try {writer = new BufferedWriter(new FileWriter(\"output.txt\", true));} catch (IOException e) {System.out.println(e.getMessage());}try {writer.append(clazz + \",\" + method + \",\" + line + \",\" + staticScope + \",\" + variableName + \",\"+ version + \",\" + value + \"\\n\");writer.close();} catch (Exception e) {System.out.println(e.getMessage());}}");
 
+    rewriter.insertAfter(ctx.getStart(),
+        "static HashMap<String, String> __versionMap__ = new HashMap<>(); public static void record(String packageName, String clazz, String method, int line, int staticScope,String variableName, Object value, int version) {__versionMap__.putIfAbsent(variableName + \"_\" + version, clazz + \",\" + method + \",\" + line + \",\" + staticScope + \",\"+ variableName + \",\" + version + \",\" + value + \"\\n\");__versionMap__.put(variableName + \"_\" + version, clazz + \",\" + method + \",\" + line + \",\" + staticScope + \",\"+ variableName + \",\" + version + \",\" + value + \"\\n\");}public static void writeOutVariables() {BufferedWriter writer = null;try {writer = new BufferedWriter(new FileWriter(\"output.txt\", true));} catch (IOException e) {System.out.println(e.getMessage());}try {for (String variableVersion : __versionMap__.keySet()) {writer.append(__versionMap__.get(variableVersion));}writer.close();} catch (Exception e) {System.out.println(e.getMessage());}}");
     // rewriter.insertAfter(ctx.getStart(),
     //     "public int fluky(int correctValue, double probability) {if (Math.random() < probability)return (int) (correctValue * 2 * Math.random());else return correctValue;}public double fluky(double correctValue, double probability) {if (Math.random() < probability)return (correctValue * 2 * Math.random());else return correctValue;}public long fluky(long correctValue, double probability) {if (Math.random() < probability)return (long) (correctValue * 2 * Math.random());else return correctValue;}      public short fluky(short correctValue, double probability) {if (Math.random() < probability)return (short) (correctValue * 2 * Math.random());else return correctValue;}");
   }
@@ -338,15 +345,23 @@ public class Converter extends Java8BaseListener {
 
   HashSet<String> variablesTrackedInMethod = new HashSet<String>();
 
+  HashMap<String, Integer> initializeFormalParams = new HashMap<>();
+
   @Override
   public void enterMethodBody(Java8Parser.MethodBodyContext ctx) {
     subscriptsBeforeMethod.putAll(variableSubscripts);
+    System.out.println(currentMethodName);
+    System.out.println(variableSubscripts);
+    // System.out.println(methodParameters);
     for (String variable : methodParameters) {
+      // System.out.println(variable + " " + subscriptsBeforeMethod.get(variable));
+      // System.out.println(variable + " " + variableSubscripts.get(variable));
       int subscript = currentVariableSubscriptMap.get(variable);
-      if (variableSubscripts.containsKey(variable))
-        initializeFormalParams += "int " + variable + "_version" + " = " + variableSubscripts.get(variable) + ";";
-      else
-        initializeFormalParams += "int " + variable + "_version" + " = 0" + ";";
+      if (variableSubscripts.containsKey(variable)) {
+        variableSubscripts.put(variable, variableSubscripts.get(variable) + 1);
+        initializeFormalParams.put(variable, variableSubscripts.get(variable));
+      } else
+        initializeFormalParams.put(variable, 0);
       variablesTrackedInMethod.add(variable);
     }
   }
@@ -355,26 +370,32 @@ public class Converter extends Java8BaseListener {
 
   @Override
   public void exitMethodBody(Java8Parser.MethodBodyContext ctx) {
-    // System.out.println(currentMethodName);
     // System.out.println(allLocalVariables);
     for (String variable : allLocalVariables) {
       if (!methodParameters.contains(variable)) {
-        if (subscriptsBeforeMethod.containsKey(variable))
+        if (subscriptsBeforeMethod.containsKey(variable)) {
+          // System.out.println(variable + " " + subscriptsBeforeMethod.get(variable));
           rewriter.insertAfter(ctx.getStart(),
               "int " + variable + "_version" + " = " + subscriptsBeforeMethod.get(variable) + ";");
-        else {
+        } else {
           rewriter.insertAfter(ctx.getStart(), "int " + variable + "_version" + " = -1;");
-          variableSubscripts.put(variable, -1);
+          // variableSubscripts.put(variable, -1);
         }
         variablesTrackedInMethod.add(variable);
       }
     }
-    rewriter.insertAfter(ctx.getStart(), initializeFormalParams);
+    for (String variable : initializeFormalParams.keySet()) {
+      rewriter.insertAfter(ctx.getStart(),
+          "int " + variable + "_version" + " = " + initializeFormalParams.get(variable) + ";");
+      insertRecordStatementAfter(ctx.getStart(), variable, ctx.getStart().getLine());
+    }
+
     currentMethodName = "";
-    initializeFormalParams = "";
+    initializeFormalParams.clear();
     allLocalVariables.clear();
     methodParameters.clear();
     variablesTrackedInMethod.clear();
+    System.out.println(variableSubscripts);
   }
 
   @Override
@@ -383,10 +404,11 @@ public class Converter extends Java8BaseListener {
     subscriptsBeforeMethod.putAll(variableSubscripts);
     for (String variable : methodParameters) {
       int subscript = currentVariableSubscriptMap.get(variable);
-      if (variableSubscripts.containsKey(variable))
-        initializeFormalParams += "int " + variable + "_version" + " = " + variableSubscripts.get(variable) + ";";
-      else
-        initializeFormalParams += "int " + variable + "_version" + " = 0" + ";";
+      if (variableSubscripts.containsKey(variable)) {
+        variableSubscripts.put(variable, variableSubscripts.get(variable) + 1);
+        initializeFormalParams.put(variable, variableSubscripts.get(variable));
+      } else
+        initializeFormalParams.put(variable, 0);
     }
   }
 
@@ -405,7 +427,11 @@ public class Converter extends Java8BaseListener {
                 "int " + variable + "_version" + " = -1;");
         }
       }
-      rewriter.insertAfter(ctx.explicitConstructorInvocation().getStop(), initializeFormalParams);
+      for (String variable : initializeFormalParams.keySet()) {
+        rewriter.insertAfter(ctx.explicitConstructorInvocation().getStop(),
+            "int " + variable + "_version" + " = " + initializeFormalParams.get(variable) + ";");
+        insertRecordStatementAfter(ctx.explicitConstructorInvocation().getStop(), variable, ctx.getStart().getLine());
+      }
     } else {
       for (String variable : allLocalVariables) {
         if (!methodParameters.contains(variable)) {
@@ -416,10 +442,14 @@ public class Converter extends Java8BaseListener {
             rewriter.insertAfter(ctx.getStart(), "int " + variable + "_version" + " = -1;");
         }
       }
-      rewriter.insertAfter(ctx.getStart(), initializeFormalParams);
+      for (String variable : initializeFormalParams.keySet()) {
+        rewriter.insertAfter(ctx.getStart(),
+            "int " + variable + "_version" + " = " + initializeFormalParams.get(variable) + ";");
+        insertRecordStatementAfter(ctx.getStart(), variable, ctx.getStart().getLine());
+      }
     }
     currentMethodName = "";
-    initializeFormalParams = "";
+    initializeFormalParams.clear();
     allLocalVariables.clear();
     methodParameters.clear();
   }
@@ -433,7 +463,7 @@ public class Converter extends Java8BaseListener {
   @Override
   public void exitPostIncrementExpression(Java8Parser.PostIncrementExpressionContext ctx) {
 
-    if (isDescendantOf(ctx, Java8Parser.ForUpdateContext.class))
+    if (isDescendantOf(ctx, Java8Parser.ForUpdateContext.class) || ctx.postfixExpression().expressionName() == null)
       return;
 
     String varName = tokens.getText(ctx.postfixExpression().expressionName());
@@ -755,8 +785,13 @@ public class Converter extends Java8BaseListener {
       // Handling a single-statement while loop by wrapping braces around it
 
       // Insert breaking statement equivalent to negation of original predicate
+      ArrayList<TerminalNode> expressionTokens = getAllTokensFromContext(ctx.expression());
+      String expressionString = "";
+      for (TerminalNode token : expressionTokens) {
+        expressionString += token.getText() + " ";
+      }
       rewriter.insertBefore(ctx.statement().statementWithoutTrailingSubstatement().getStart(),
-          "if (!(" + ctx.expression().getText() + ")) {break;}");
+          "if (!(" + expressionString + ")) {break;}");
 
       // Record predicate variable values
       for (String variable : expressionNamesList) {
@@ -776,9 +811,13 @@ public class Converter extends Java8BaseListener {
         insertVersionUpdateAfter(blockContextStart, variable);
         insertRecordStatementAfter(blockContextStart, variable, ctx.expression().getStart().getLine());
       }
-
+      ArrayList<TerminalNode> expressionTokens = getAllTokensFromContext(ctx.expression());
+      String expressionString = "";
+      for (TerminalNode token : expressionTokens) {
+        expressionString += token.getText() + " ";
+      }
       // Add breaking if statement equivalent to negation of original predicate
-      rewriter.insertAfter(blockContextStart, "if (!(" + ctx.expression().getText() + ")) {break;}");
+      rewriter.insertAfter(blockContextStart, "if (!(" + expressionString + ")) {break;}");
     }
 
     // Record values of all variables used inside the predicate block
@@ -831,10 +870,15 @@ public class Converter extends Java8BaseListener {
 
     if (blockContext == null) {
       // Handling a single-statement while loop by wrapping braces around it
+      ArrayList<TerminalNode> expressionTokens = getAllTokensFromContext(ctx.expression());
+      String expressionString = "";
+      for (TerminalNode token : expressionTokens) {
+        expressionString += token.getText() + " ";
+      }
 
       // Insert breaking statement equivalent to negation of original predicate
       rewriter.insertBefore(ctx.statementNoShortIf().statementWithoutTrailingSubstatement().getStart(),
-          "if (!(" + ctx.expression().getText() + ")) {break;}");
+          "if (!(" + expressionString + ")) {break;}");
 
       // Record predicate variable values
       for (String variable : expressionNamesList) {
@@ -854,9 +898,14 @@ public class Converter extends Java8BaseListener {
         insertVersionUpdateAfter(blockContextStart, variable);
         insertRecordStatementAfter(blockContextStart, variable, ctx.expression().getStart().getLine());
       }
+      ArrayList<TerminalNode> expressionTokens = getAllTokensFromContext(ctx.expression());
+      String expressionString = "";
+      for (TerminalNode token : expressionTokens) {
+        expressionString += token.getText() + " ";
+      }
 
       // Add breaking if statement equivalent to negation of original predicate
-      rewriter.insertAfter(blockContextStart, "if (!(" + ctx.expression().getText() + ")) {break;}");
+      rewriter.insertAfter(blockContextStart, "if (!(" + expressionString + ")) {break;}");
     }
 
     // Record values of all variables used inside the predicate block
@@ -936,7 +985,12 @@ public class Converter extends Java8BaseListener {
       rewriter.insertBefore(ctx.statement().getStart(), "{");
       rewriter.insertAfter(ctx.statement().getStop(), "}");
     } else {
-      rewriter.insertAfter(ctx.statement().getStart(), "if (!(" + ctx.expression().getText() + ")) {break;}");
+      ArrayList<TerminalNode> expressionTokens = getAllTokensFromContext(ctx.expression());
+      String expressionString = "";
+      for (TerminalNode token : expressionTokens) {
+        expressionString += token.getText() + " ";
+      }
+      rewriter.insertAfter(ctx.statement().getStart(), "if (!(" + expressionString + ")) {break;}");
     }
     rewriter.insertBefore(ctx.getStart(), "{");
     rewriter.insertAfter(ctx.getStop(), "}");
@@ -1045,7 +1099,12 @@ public class Converter extends Java8BaseListener {
       rewriter.insertBefore(ctx.statementNoShortIf().getStart(), "{");
       rewriter.insertAfter(ctx.statementNoShortIf().getStop(), "}");
     } else {
-      rewriter.insertAfter(ctx.statementNoShortIf().getStart(), "if (!(" + ctx.expression().getText() + ")) {break;}");
+      ArrayList<TerminalNode> expressionTokens = getAllTokensFromContext(ctx.expression());
+      String expressionString = "";
+      for (TerminalNode token : expressionTokens) {
+        expressionString += token.getText() + " ";
+      }
+      rewriter.insertAfter(ctx.statementNoShortIf().getStart(), "if (!(" + expressionString + ")) {break;}");
     }
     rewriter.insertBefore(ctx.getStart(), "{");
     rewriter.insertAfter(ctx.getStop(), "}");
@@ -1446,7 +1505,12 @@ public class Converter extends Java8BaseListener {
         phiEntryVariablesStack.lastElement().add(variable);
       }
     } else {
-      rewriter.insertBefore(ctx.statement().getStart(), "if (!(" + ctx.expression().getText() + ")) {break;}");
+      ArrayList<TerminalNode> expressionTokens = getAllTokensFromContext(ctx.expression());
+      String expressionString = "";
+      for (TerminalNode token : expressionTokens) {
+        expressionString += token.getText() + " ";
+      }
+      rewriter.insertBefore(ctx.statement().getStart(), "if (!(" + expressionString + ")) {break;}");
       for (String variable : expressionNamesList) {
         phiEntryVariablesStack.lastElement().add(variable);
       }
@@ -1486,7 +1550,12 @@ public class Converter extends Java8BaseListener {
         phiEntryVariablesStack.lastElement().add(variable);
       }
     } else {
-      rewriter.insertBefore(ctx.statementNoShortIf().getStart(), "if (!(" + ctx.expression().getText() + ")) {break;}");
+      ArrayList<TerminalNode> expressionTokens = getAllTokensFromContext(ctx.expression());
+      String expressionString = "";
+      for (TerminalNode token : expressionTokens) {
+        expressionString += token.getText() + " ";
+      }
+      rewriter.insertBefore(ctx.statementNoShortIf().getStart(), "if (!(" + expressionString + ")) {break;}");
       for (String variable : expressionNamesList) {
         phiEntryVariablesStack.lastElement().add(variable);
       }
