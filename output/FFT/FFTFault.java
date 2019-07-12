@@ -18,15 +18,50 @@ import java.io.FileWriter;
 import java.io.IOException;
 import java.util.HashMap;
 
-public class FFTFault {
+public class FFT {
   static HashMap<String, String> __versionMap__ = new HashMap<>();
 
-  public static void record(String packageName, String clazz, String method, int line, int staticScope,
-      String variableName, Object value, int version) {
-    __versionMap__.putIfAbsent(variableName + "_" + version, clazz + "," + method + "," + line + "," + staticScope + ","
-        + variableName + "," + version + "," + value + "\n");
-    __versionMap__.put(variableName + "_" + version, clazz + "," + method + "," + line + "," + staticScope + ","
-        + variableName + "," + version + "," + value + "\n");
+  public static void record(
+      String packageName,
+      String clazz,
+      String method,
+      int line,
+      int staticScope,
+      String variableName,
+      Object value,
+      int version) {
+    __versionMap__.putIfAbsent(
+        variableName + "_" + version,
+        clazz
+            + ","
+            + method
+            + ","
+            + line
+            + ","
+            + staticScope
+            + ","
+            + variableName
+            + ","
+            + version
+            + ","
+            + value
+            + "\n");
+    __versionMap__.put(
+        variableName + "_" + version,
+        clazz
+            + ","
+            + method
+            + ","
+            + line
+            + ","
+            + staticScope
+            + ","
+            + variableName
+            + ","
+            + version
+            + ","
+            + value
+            + "\n");
   }
 
   public static void writeOutVariables() {
@@ -64,7 +99,6 @@ public class FFTFault {
   /** Compute Fast Fourier Transform of (complex) data, in place. */
   public static void transform(double data[]) {
     transform_internal(data, -1);
-    writeOutVariables();
   }
 
   /** Compute Inverse Fast Fourier Transform of (complex) data, in place. */
@@ -276,7 +310,6 @@ public class FFTFault {
     int tmp_real_version = -1;
     int s2_version = -1;
     int direction_version = 0;
-    boolean gen_bad = Math.random() < .75;
     record("", "FFT", "transform_internal", 101, 0, "direction", direction, direction_version);
     if (data.length == 0) {
       return;
@@ -384,10 +417,12 @@ public class FFTFault {
             {
               double tmp_real = w_real - s * w_imag - s2 * w_real;
               tmp_real_version = 0;
-              record("", "FFT", "transform_internal", 141, 4, "tmp_real", tmp_real, tmp_real_version);
+              record(
+                  "", "FFT", "transform_internal", 141, 4, "tmp_real", tmp_real, tmp_real_version);
               double tmp_imag = w_imag + s * w_real - s2 * w_imag;
               tmp_imag_version = 0;
-              record("", "FFT", "transform_internal", 142, 4, "tmp_imag", tmp_imag, tmp_imag_version);
+              record(
+                  "", "FFT", "transform_internal", 142, 4, "tmp_imag", tmp_imag, tmp_imag_version);
               w_real = tmp_real;
               w_real_version = 1;
               record("", "FFT", "transform_internal", 143, 4, "w_real", w_real, w_real_version);
@@ -416,17 +451,21 @@ public class FFTFault {
 
                 double z1_real = data[j];
                 z1_real_version = 0;
-                record("", "FFT", "transform_internal", 150, 4, "z1_real", z1_real, z1_real_version);
+                record(
+                    "", "FFT", "transform_internal", 150, 4, "z1_real", z1_real, z1_real_version);
                 double z1_imag = data[j + 1];
                 z1_imag_version = 0;
-                record("", "FFT", "transform_internal", 151, 4, "z1_imag", z1_imag, z1_imag_version);
+                record(
+                    "", "FFT", "transform_internal", 151, 4, "z1_imag", z1_imag, z1_imag_version);
 
-                double wd_real = Fluky.fuzzyDouble(w_real * z1_real - w_imag * z1_imag, gen_bad, .5);
+                double wd_real = w_real * z1_real - w_imag * z1_imag;
                 wd_real_version = 1;
-                record("", "FFT", "transform_internal", 153, 4, "wd_real", wd_real, wd_real_version);
+                record(
+                    "", "FFT", "transform_internal", 153, 4, "wd_real", wd_real, wd_real_version);
                 double wd_imag = w_real * z1_imag + w_imag * z1_real;
                 wd_imag_version = 1;
-                record("", "FFT", "transform_internal", 154, 4, "wd_imag", wd_imag, wd_imag_version);
+                record(
+                    "", "FFT", "transform_internal", 154, 4, "wd_imag", wd_imag, wd_imag_version);
 
                 data[j] = data[i] - wd_real;
                 data[j + 1] = data[i + 1] - wd_imag;
@@ -443,8 +482,16 @@ public class FFTFault {
           }
         }
         w_real_version = 2;
-        record("", "FFT", "transform_internal", 161, 2, "w_real", w_real, w_real_version); // w_real version: 0w_imag_version =
-                                                                                           // 2;record("","FFT","transform_internal",161,2,"w_imag",w_imag,w_imag_version);// w_imag version: 0
+        record(
+            "",
+            "FFT",
+            "transform_internal",
+            161,
+            2,
+            "w_real",
+            w_real,
+            w_real_version); // w_real version: 0w_imag_version =
+                             // 2;record("","FFT","transform_internal",161,2,"w_imag",w_imag,w_imag_version);// w_imag version: 0
         dual *= 2;
         dual_version = 2;
         record("", "FFT", "transform_internal", 114, 1, "dual", dual, dual_version);

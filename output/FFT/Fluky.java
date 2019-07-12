@@ -23,11 +23,8 @@ public class Fluky {
       return badValue;
   }
 
-  public static double fuzzyDouble(double good_expression, boolean gen_bad, double p) {
+  public static double fuzzyDouble(double good_expression, boolean gen_bad) {
     if (!gen_bad)
-      return good_expression;
-    double r = Math.random();
-    if (r <= p)
       return good_expression;
     else
       return good_expression * 2 * Math.random();
